@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { type Ref, useId } from 'react';
+import { formatLocalObservationTime, formatMeasurement } from '../lib/format';
 import { formatTemperature } from '../lib/temperature';
 import { getWeatherCondition } from '../lib/weatherCodes';
 import type { City, CurrentWeather as CurrentWeatherData, Unit } from '../types/weather';
@@ -7,31 +8,32 @@ interface CurrentWeatherProps {
   city: City;
   current: CurrentWeatherData;
   unit: Unit;
+  timezone?: string | null;
+  headingRef?: Ref<HTMLHeadingElement>;
 }
 
-function formatMetric(value: number | null, suffix: string, maximum = Infinity): string {
-  if (value === null || !Number.isFinite(value) || value < 0 || value > maximum) {
-    return 'Indisponível';
-  }
-  const digits = suffix === '%' ? 0 : 1;
-  return `${new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value)} ${suffix}`;
-}
-
-export default function CurrentWeather({ city, current, unit }: CurrentWeatherProps) {
+export default function CurrentWeather({
+  city,
+  current,
+  unit,
+  timezone,
+  headingRef,
+}: CurrentWeatherProps) {
   const headingId = useId();
   const condition = getWeatherCondition(current.weatherCode);
   const temperature = formatTemperature(current.temperatureC, unit);
   const apparentTemperature = formatTemperature(current.apparentTemperatureC, unit);
+  const observedAt = formatLocalObservationTime(current.observedAt, timezone);
   const metrics = [
-    { label: 'Umidade', value: formatMetric(current.relativeHumidity, '%', 100) },
-    { label: 'Vento', value: formatMetric(current.windSpeedKmh, 'km/h') },
-    { label: 'Precipitação', value: formatMetric(current.precipitationMm, 'mm') },
+    { label: 'Umidade', value: formatMeasurement(current.relativeHumidity, '%', 100, 0) },
+    { label: 'Vento', value: formatMeasurement(current.windSpeedKmh, 'km/h') },
+    { label: 'Precipitação', value: formatMeasurement(current.precipitationMm, 'mm') },
     {
       label: 'Pressão',
-      value: formatMetric(current.pressureHpa === 0 ? null : current.pressureHpa, 'hPa'),
+      value: formatMeasurement(
+        current.pressureHpa && current.pressureHpa > 0 ? current.pressureHpa : null,
+        'hPa',
+      ),
     },
   ];
   const unavailable =
@@ -47,12 +49,22 @@ export default function CurrentWeather({ city, current, unit }: CurrentWeatherPr
     >
       <header>
         <p className="text-sm text-slate-300">Condições atuais</p>
-        <h2 id={headingId} className="mt-1 text-2xl font-semibold sm:text-3xl">
+        <h2
+          ref={headingRef}
+          id={headingId}
+          tabIndex={-1}
+          className="mt-1 text-2xl font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400 sm:text-3xl"
+        >
           {city.name}
         </h2>
         <p className="mt-1 text-sm text-slate-300">
           {[city.region, city.country].filter(Boolean).join(', ')}
         </p>
+        {observedAt && (
+          <p className="mt-1 text-sm text-slate-300">
+            Horário de referência: <time dateTime={current.observedAt ?? undefined}>{observedAt}</time>
+          </p>
+        )}
       </header>
       {unavailable && <p role="status">Dados meteorológicos indisponíveis.</p>}
       <div className="my-8 flex flex-wrap items-center gap-6">

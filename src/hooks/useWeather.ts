@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { validateSearch } from '../lib/search';
 import { getWeather, searchCities, WeatherServiceError } from '../services/weatherService';
-import type { City, WeatherData } from '../types/weather';
+import type { City, OperationError, WeatherData } from '../types/weather';
 
 type Operation = { type: 'search'; query: string } | { type: 'select'; city: City };
+
+const OPERATION_ERROR_MESSAGE = 'Não foi possível concluir a operação. Tente novamente.';
 
 type WeatherHookState = {
   cities: City[];
@@ -11,7 +13,13 @@ type WeatherHookState = {
 } & (
   | { status: 'idle' | 'loading' | 'empty'; data: null; error: null }
   | { status: 'success'; data: WeatherData; error: null }
-  | { status: 'error'; data: null; error: string; errorType: 'validation' | 'operation' }
+  | {
+      status: 'error';
+      data: null;
+      error: string;
+      errorType: 'validation' | 'operation';
+      errorReason: OperationError['reason'] | 'unknown' | null;
+    }
 );
 
 interface ActiveOperation {
@@ -63,6 +71,7 @@ export function useWeather() {
           query: operation.query,
           error: validationError,
           errorType: 'validation',
+          errorReason: null,
         });
         return;
       }
@@ -79,8 +88,9 @@ export function useWeather() {
             ...previous,
             status: 'error',
             data: null,
-            error: 'A requisição demorou demais.',
+            error: OPERATION_ERROR_MESSAGE,
             errorType: 'operation',
+            errorReason: 'timeout',
           }));
         }, 8000),
       };
@@ -117,15 +127,19 @@ export function useWeather() {
         if (!(cause instanceof WeatherServiceError)) {
           console.error('Falha inesperada na operação meteorológica.', cause);
         }
+        const errorReason =
+          cause instanceof WeatherServiceError
+            ? cause.reason === 'network' || cause.reason === 'timeout'
+              ? cause.reason
+              : 'api'
+            : 'unknown';
         setState((previous) => ({
           ...previous,
           status: 'error',
           data: null,
-          error:
-            cause instanceof WeatherServiceError
-              ? cause.message
-              : 'Não foi possível concluir a operação. Tente novamente.',
+          error: OPERATION_ERROR_MESSAGE,
           errorType: 'operation',
+          errorReason,
         }));
       } finally {
         clearTimeout(current.timer);

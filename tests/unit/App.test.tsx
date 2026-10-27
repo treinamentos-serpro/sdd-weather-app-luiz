@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../src/App';
@@ -20,10 +20,14 @@ afterEach(cleanup);
 describe('App integrado ao hook', () => {
   it('não acumula erro de operação e validação nem repete a busca anterior', async () => {
     const user = userEvent.setup();
-    vi.mocked(searchCities).mockRejectedValueOnce(new WeatherServiceError('Falha de rede.'));
+    vi.mocked(searchCities).mockRejectedValueOnce(
+      new WeatherServiceError('Falha de rede.', undefined, { reason: 'network' }),
+    );
     render(<App />);
     await user.type(screen.getByRole('searchbox'), 'São Paulo{Enter}');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Falha de rede.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível concluir a operação. Tente novamente.',
+    );
     await user.clear(screen.getByRole('searchbox'));
     await user.click(screen.getByRole('button', { name: 'Buscar' }));
     expect(screen.getAllByRole('alert')).toHaveLength(1);
@@ -49,7 +53,10 @@ describe('App integrado ao hook', () => {
     render(<App />);
     await user.type(screen.getByRole('searchbox'), 'São Paulo{Enter}');
     expect(await screen.findByRole('region', { name: 'São Paulo' })).toBeInTheDocument();
-    expect(screen.getAllByRole('listitem')).toHaveLength(5);
+    expect(screen.getByRole('heading', { name: 'São Paulo' })).toHaveFocus();
+    expect(
+      within(screen.getByRole('region', { name: 'Previsão de 5 dias' })).getAllByRole('listitem'),
+    ).toHaveLength(5);
     await user.click(screen.getByRole('button', { name: '°F' }));
     expect(screen.getByText('77,7 °F')).toBeInTheDocument();
     expect(screen.getByText('81,5 °F')).toBeInTheDocument();
@@ -65,9 +72,57 @@ describe('App integrado ao hook', () => {
     await user.click(screen.getByRole('button', { name: '°F' }));
     await user.type(screen.getByRole('searchbox'), 'Recife{Enter}');
     expect(screen.getByRole('status')).toHaveTextContent('Carregando dados meteorológicos...');
+    expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'true');
     expect(screen.getByRole('searchbox')).toBeDisabled();
     expect(screen.getByRole('button', { name: '°F', pressed: true })).toBeEnabled();
     expect(screen.queryByRole('region', { name: 'São Paulo' })).not.toBeInTheDocument();
+  });
+
+  it('aplica a unidade alterada durante o carregamento a todas as temperaturas resolvidas', async () => {
+    const user = userEvent.setup();
+    let resolveWeather!: (value: typeof MOCK_WEATHER) => void;
+    vi.mocked(getWeather).mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveWeather = resolve;
+      }),
+    );
+    render(<App />);
+    await user.type(screen.getByRole('searchbox', { name: 'Nome da cidade' }), 'São Paulo{Enter}');
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando dados meteorológicos...');
+
+    await user.click(screen.getByRole('button', { name: '°F' }));
+    await act(async () => resolveWeather(MOCK_WEATHER));
+
+    const current = within(await screen.findByRole('region', { name: 'São Paulo' }));
+    expect(current.getByText('77,7 °F')).toBeInTheDocument();
+    expect(current.getByText('Sensação térmica: 79,0 °F')).toBeInTheDocument();
+    const forecast = within(screen.getByRole('region', { name: 'Previsão de 5 dias' }));
+    expect(forecast.getByText('81,5 °F')).toBeInTheDocument();
+    expect(forecast.getByText('64,8 °F')).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).queryAllByText(/°C/)).toHaveLength(0);
+    expect(getWeather).toHaveBeenCalledTimes(1);
+    expect(searchCities).toHaveBeenCalledTimes(1);
+  });
+
+  it('não mantém dados anteriores quando uma nova busca falha após um sucesso', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByRole('searchbox'), 'São Paulo{Enter}');
+    await screen.findByRole('region', { name: 'São Paulo' });
+    vi.mocked(getWeather).mockRejectedValueOnce(
+      new WeatherServiceError('Falha de rede.', undefined, { reason: 'network' }),
+    );
+
+    await user.clear(screen.getByRole('searchbox'));
+    await user.type(screen.getByRole('searchbox'), 'Recife{Enter}');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível concluir a operação. Tente novamente.',
+    );
+    expect(screen.queryByRole('region', { name: 'São Paulo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Previsão de 5 dias' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tentar novamente' })).toBeEnabled();
+    expect(getWeather).toHaveBeenCalledTimes(2);
   });
 
   it('mostra empty sem chamar forecast', async () => {
@@ -83,16 +138,45 @@ describe('App integrado ao hook', () => {
 
   it('exibe erro real e retry refaz a busca, mantendo unidade e foco', async () => {
     const user = userEvent.setup();
-    vi.mocked(getWeather).mockRejectedValueOnce(new WeatherServiceError('Falha de rede.'));
+    vi.mocked(getWeather).mockRejectedValueOnce(
+      new WeatherServiceError('Falha de rede.', undefined, { reason: 'network' }),
+    );
     render(<App />);
     await user.click(screen.getByRole('button', { name: '°F' }));
     await user.type(screen.getByRole('searchbox'), 'São Paulo{Enter}');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Falha de rede.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Não foi possível concluir a operação. Tente novamente.',
+    );
     await user.click(screen.getByRole('button', { name: 'Tentar novamente' }));
     expect(await screen.findByText('77,7 °F')).toBeInTheDocument();
     expect(searchCities).toHaveBeenCalledTimes(2);
     expect(getWeather).toHaveBeenCalledTimes(2);
-    expect(screen.getByRole('main')).toHaveFocus();
+    expect(screen.getByRole('heading', { name: 'São Paulo' })).toHaveFocus();
+  });
+
+  it('permite escolher outro homônimo e distingue coordenadas', async () => {
+    const user = userEvent.setup();
+    const first = {
+      ...MOCK_WEATHER.city,
+      id: 'first',
+      name: 'Porto Alegre',
+      region: 'Rio Grande do Sul',
+      latitude: -30.0346,
+      longitude: -51.2177,
+    };
+    const second = { ...first, id: 'second', latitude: -29.6842, longitude: -53.8069 };
+    vi.mocked(searchCities).mockResolvedValue([first, second]);
+    vi.mocked(getWeather).mockImplementation(async (city) => ({ ...MOCK_WEATHER, city }));
+
+    render(<App />);
+    await user.type(screen.getByRole('searchbox'), 'Porto Alegre{Enter}');
+    await screen.findByRole('region', { name: 'Porto Alegre' });
+
+    const alternate = screen.getByRole('button', { name: /Porto Alegre.*-29\.6842, -53\.8069/ });
+    await user.click(alternate);
+
+    expect(getWeather).toHaveBeenLastCalledWith(second, expect.any(AbortSignal));
+    expect(await screen.findByRole('heading', { name: 'Porto Alegre' })).toHaveFocus();
   });
 
   it('remove dados anteriores após busca vazia e reinicia a unidade ao remontar', async () => {

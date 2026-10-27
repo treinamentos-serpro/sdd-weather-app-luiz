@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatDayLabel, formatProbability, isValidTimezone } from '../../src/lib/format';
+import {
+  formatDayLabel,
+  formatLocalObservationTime,
+  formatMeasurement,
+  formatProbability,
+  isValidTimezone,
+} from '../../src/lib/format';
 
 afterEach(() => vi.useRealTimers());
 
@@ -43,5 +49,38 @@ describe('Probabilidade', () => {
   });
   it.each([null, -1, 101, Infinity, Number.NaN])('rejeita %s', (value) => {
     expect(formatProbability(value)).toBe('Indisponível');
+  });
+});
+
+describe('Medições', () => {
+  it('formata valores finitos com uma casa decimal e unidade', () => {
+    expect(formatMeasurement(4.25, 'mm')).toBe('4,3 mm');
+    expect(formatMeasurement(64, '%', 100, 0)).toBe('64 %');
+  });
+
+  it.each([null, undefined, -1, 101, Infinity, Number.NaN])(
+    'usa fallback para medição ausente ou fora do domínio: %s',
+    (value) => {
+      expect(formatMeasurement(value, 'km/h', 100)).toBe('Indisponível');
+    },
+  );
+});
+
+describe('Horário de referência', () => {
+  it('formata a data e a hora local recebidas com fuso válido', () => {
+    expect(formatLocalObservationTime('2026-10-27T12:05', 'America/Sao_Paulo')).toBe(
+      '27/10/2026 às 12:05',
+    );
+  });
+
+  it.each([
+    [null, 'America/Sao_Paulo'],
+    ['2026-10-27T12:05', null],
+    ['2026-10-27T12:05', 'invalid'],
+    ['2026-02-30T12:05', 'UTC'],
+    ['2026-10-27T24:00', 'UTC'],
+    ['not-a-time', 'UTC'],
+  ])('não apresenta timestamp ausente ou inválido %j', (value, timezone) => {
+    expect(formatLocalObservationTime(value, timezone)).toBeNull();
   });
 });

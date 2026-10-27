@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import CityResults from './components/CityResults';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
 import SearchBar from './components/SearchBar';
@@ -11,8 +12,23 @@ import type { Unit } from './types/weather';
 
 export default function App() {
   const mainRef = useRef<HTMLElement>(null);
+  const weatherHeadingRef = useRef<HTMLHeadingElement>(null);
   const [unit, setUnit] = useState<Unit>('celsius');
-  const { status, data, error, search, retry, clearError, canRetry } = useWeather();
+  const {
+    status,
+    data,
+    cities,
+    error,
+    search,
+    selectCity,
+    retry,
+    clearError,
+    canRetry,
+  } = useWeather();
+
+  useEffect(() => {
+    if (status === 'success') weatherHeadingRef.current?.focus();
+  }, [status]);
 
   return (
     <div className="min-h-screen bg-night-900 font-sans text-white">
@@ -33,17 +49,14 @@ export default function App() {
           </div>
           <SearchBar onSearch={search} onEdit={clearError} disabled={status === 'loading'} />
         </header>
-        <p aria-live="polite" aria-atomic="true" className="sr-only">
-          {status === 'success' && data
-            ? `Dados meteorológicos de ${data.city.name} exibidos.`
-            : ''}
-        </p>
         <main
           ref={mainRef}
           id="main-content"
           tabIndex={-1}
+          aria-busy={status === 'loading'}
           className="mt-8 space-y-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-400"
         >
+          {cities.length > 0 && <CityResults cities={cities} onSelect={selectCity} />}
           {status === 'idle' && (
             <EmptyState title="Consulte o clima" hint="Busque uma cidade para começar." />
           )}
@@ -61,7 +74,13 @@ export default function App() {
           )}
           {status === 'success' && data && (
             <>
-              <CurrentWeather city={data.city} current={data.current} unit={unit} />
+              <CurrentWeather
+                city={data.city}
+                current={data.current}
+                unit={unit}
+                timezone={data.timezone}
+                headingRef={weatherHeadingRef}
+              />
               <ForecastList forecast={data.forecast} timezone={data.timezone} unit={unit} />
             </>
           )}

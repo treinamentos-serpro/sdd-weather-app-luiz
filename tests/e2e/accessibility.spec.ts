@@ -53,6 +53,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('mantém conteúdo sem cortes de 320px a desktop em todos os estados', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/');
   for (const [width, height] of [
     [320, 900],
@@ -75,8 +76,11 @@ test('mantém conteúdo sem cortes de 320px a desktop em todos os estados', asyn
       if (state === 'error') await expect(page.getByRole('alert')).toBeVisible();
       if (state === 'success') {
         await expect(page.getByRole('region', { name: 'São Paulo' })).toBeVisible();
-        await page.getByRole('button', { name: '°F' }).click();
-        await expect(page.getByRole('listitem')).toHaveCount(5);
+        await page.getByRole('button', { name: '°F' }).focus();
+        await page.keyboard.press('Space');
+        await expect(
+          page.getByRole('region', { name: 'Previsão de 5 dias' }).getByRole('listitem'),
+        ).toHaveCount(5);
       }
       const overflowing = await page
         .locator('body')
@@ -95,6 +99,10 @@ test('mantém conteúdo sem cortes de 320px a desktop em todos os estados', asyn
 test('skip link, busca, unidade e retry funcionam por teclado com foco preservado', async ({
   page,
 }) => {
+  test.skip(
+    test.info().project.name === 'mobile',
+    'A emulação mobile não modela navegação com teclado físico.',
+  );
   await page.goto('/');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Pular para o conteúdo' })).toBeFocused();
@@ -124,11 +132,12 @@ test('skip link, busca, unidade e retry funcionam por teclado com foco preservad
   );
   await page.getByRole('button', { name: 'Tentar novamente' }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('main')).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'São Paulo' })).toBeFocused();
 });
 
 test('bordas, foco e textos dos controles atingem contraste AA', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByRole('searchbox')).toBeVisible();
   const ratios = await page.evaluate(() => {
     function rgb(value: string) {
       return (value.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);

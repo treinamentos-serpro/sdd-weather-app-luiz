@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { formatDayLabel, formatProbability } from '../lib/format';
+import { formatDayLabel, formatMeasurement, formatProbability } from '../lib/format';
 import { formatTemperature } from '../lib/temperature';
 import { getWeatherCondition } from '../lib/weatherCodes';
 import type { ForecastDay, Unit } from '../types/weather';
@@ -40,6 +40,14 @@ export default function ForecastCard({ day, unit }: ForecastCardProps) {
         <div>
           <dt className="text-sm text-slate-300">Probabilidade de chuva</dt>
           <dd>{formatProbability(day.precipitationProbabilityMax)}</dd>
+        </div>
+        <div>
+          <dt className="text-sm text-slate-300">Precipitação</dt>
+          <dd>{formatMeasurement(day.precipitationSumMm, 'mm')}</dd>
+        </div>
+        <div>
+          <dt className="text-sm text-slate-300">Vento máximo</dt>
+          <dd>{formatMeasurement(day.maximumWindSpeedKmh, 'km/h')}</dd>
         </div>
       </dl>
     </article>

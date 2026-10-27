@@ -165,6 +165,11 @@ function finiteNumber(value: unknown, minimum = -Infinity, maximum = Infinity): 
     : null;
 }
 
+function positiveNumber(value: unknown): number | null {
+  const number = finiteNumber(value);
+  return number !== null && number > 0 ? number : null;
+}
+
 function weatherCode(value: unknown): number | null {
   const code = finiteNumber(value);
   return getWeatherCondition(code) ? code : null;
@@ -246,7 +251,6 @@ export async function getWeather(city: City, signal?: AbortSignal): Promise<Weat
   }
   const current = payload.current;
   const timezone = nullableText(payload.timezone);
-  const pressure = finiteNumber(current.surface_pressure, 0);
   return {
     city,
     timezone: isValidTimezone(timezone) ? timezone : null,
@@ -258,7 +262,7 @@ export async function getWeather(city: City, signal?: AbortSignal): Promise<Weat
       relativeHumidity: finiteNumber(current.relative_humidity_2m, 0, 100),
       precipitationMm: finiteNumber(current.precipitation, 0),
       windSpeedKmh: finiteNumber(current.wind_speed_10m, 0),
-      pressureHpa: pressure === 0 ? null : pressure,
+      pressureHpa: positiveNumber(current.surface_pressure),
     },
     forecast: mapForecast(payload.daily, current.time),
   };

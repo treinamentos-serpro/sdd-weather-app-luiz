@@ -170,6 +170,13 @@ O painel atual recebe `city`, `current` e `unit` em
 `surface_pressure`, em hPa, positivo e finito; ausências/valores inválidos viram
 `null`. Não inferir pressão a partir de outras métricas.
 
+`CurrentWeather` também recebe o fuso validado para apresentar
+`observedAt` somente quando data, horário e fuso forem utilizáveis. Cada
+`ForecastCard` apresenta condição, mín./máx., precipitação, probabilidade e
+vento máximo. Campos meteorológicos opcionais ou inválidos são normalizados
+para `null` no service e exibidos como “Indisponível”, sem converter ausência
+em zero.
+
 Estados da tela devem ser discriminados, evitando combinar flags contraditórias:
 
 ```ts
@@ -547,8 +554,9 @@ indisponibilidade e erro precisam ser compreensíveis por teclado/leitor de tela
   de timeout, caso o prazo esteja encapsulado no service; se o hook o controla,
   testar o timeout no hook.
 - **Hooks e componentes (Vitest + Testing Library):** testar estados observáveis
-  `idle`, `loading`, `success`, `empty` e `error`; busca explícita, seleção sem
-  auto-seleção, retry manual, cancelamento e descarte de resposta fora de ordem.
+  `idle`, `loading`, `success`, `empty` e `error`; busca explícita, consulta
+  automática do primeiro resultado e seleção posterior, retry manual,
+  cancelamento e descarte de resposta fora de ordem.
   Nos componentes, simular dependências e verificar renderização/interação nos
   estados loading, erro, vazio e sucesso, além de dados parciais, mensagens
   exatas, troca de unidade sem novo request, roles/labels e uso por teclado.

@@ -58,6 +58,14 @@ describe('searchCities', () => {
     ]);
   });
 
+  it('preserva acentos, apóstrofos e hífens na consulta codificada', async () => {
+    mockResponse({ results: [] });
+    const query = "L'Haÿ-les-Roses";
+    await searchCities(query);
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(new URL(String(url)).searchParams.get('name')).toBe(query);
+  });
+
   it('mapeia contexto ausente para null e gera id estável quando necessário', async () => {
     mockResponse({ results: [{ name: 'Recife', latitude: -8.05, longitude: -34.9 }] });
     const first = await searchCities('Recife');
@@ -106,11 +114,12 @@ describe('searchCities', () => {
     await expect(searchCities('Recife')).rejects.toBeInstanceOf(WeatherServiceError);
   });
 
-  it('preserva a causa do erro de rede', async () => {
+  it('identifica rede offline e preserva a causa original', async () => {
     const cause = new TypeError('Falha de rede');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(cause));
     await expect(searchCities('Recife')).rejects.toMatchObject({
       name: 'WeatherServiceError',
+      reason: 'network',
       cause,
     });
   });

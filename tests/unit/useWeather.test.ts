@@ -111,12 +111,15 @@ describe('useWeather', () => {
   });
 
   it('retry de busca repete geocoding e forecast, preservando cidades em erro de forecast', async () => {
-    vi.mocked(getWeather).mockRejectedValueOnce(new WeatherServiceError('Falha de rede.'));
+    vi.mocked(getWeather).mockRejectedValueOnce(
+      new WeatherServiceError('Falha de rede.', undefined, { reason: 'network' }),
+    );
     const { result } = renderHook(() => useWeather());
     await act(() => result.current.search('São Paulo'));
     expect(result.current).toMatchObject({
       status: 'error',
-      error: 'Falha de rede.',
+      error: 'Não foi possível concluir a operação. Tente novamente.',
+      errorReason: 'network',
       cities: [MOCK_WEATHER.city],
       data: null,
     });
@@ -128,7 +131,9 @@ describe('useWeather', () => {
 
   it('selectCity e seu retry consultam somente a cidade escolhida', async () => {
     const other = { ...MOCK_WEATHER.city, id: 'other', name: 'Recife' };
-    vi.mocked(getWeather).mockRejectedValueOnce(new WeatherServiceError('Falha de rede.'));
+    vi.mocked(getWeather).mockRejectedValueOnce(
+      new WeatherServiceError('Falha de rede.', undefined, { reason: 'network' }),
+    );
     const { result } = renderHook(() => useWeather());
     await act(() => result.current.selectCity(other));
     expect(result.current.status).toBe('error');
@@ -140,10 +145,17 @@ describe('useWeather', () => {
   });
 
   it('falha de busca não é convertida em empty', async () => {
-    vi.mocked(searchCities).mockRejectedValue(new WeatherServiceError('Falha de rede.'));
+    vi.mocked(searchCities).mockRejectedValue(
+      new WeatherServiceError('Falha de rede.', undefined, { reason: 'network' }),
+    );
     const { result } = renderHook(() => useWeather());
     await act(() => result.current.search('Recife'));
-    expect(result.current).toMatchObject({ status: 'error', error: 'Falha de rede.', data: null });
+    expect(result.current).toMatchObject({
+      status: 'error',
+      error: 'Não foi possível concluir a operação. Tente novamente.',
+      errorReason: 'network',
+      data: null,
+    });
   });
 
   it('cancela e ignora busca antiga concluída fora de ordem', async () => {
@@ -221,7 +233,8 @@ describe('useWeather', () => {
     await act(() => vi.advanceTimersByTimeAsync(1));
     expect(result.current).toMatchObject({
       status: 'error',
-      error: 'A requisição demorou demais.',
+      error: 'Não foi possível concluir a operação. Tente novamente.',
+      errorReason: 'timeout',
       data: null,
     });
     expect(vi.mocked(getWeather).mock.calls[0][1]?.aborted).toBe(true);

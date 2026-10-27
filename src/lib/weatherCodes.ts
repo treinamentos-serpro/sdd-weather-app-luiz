@@ -34,7 +34,7 @@ const weatherCodes: Readonly<Record<number, WeatherCondition>> = {
   99: { label: 'Trovoada com granizo forte', icon: '⛈️' },
 };
 
-export function getWeatherCondition(code: number | null): WeatherCondition | null {
-  if (code === null || !Object.hasOwn(weatherCodes, code)) return null;
+export function getWeatherCondition(code: number | null | undefined): WeatherCondition | null {
+  if (code == null || !Object.hasOwn(weatherCodes, code)) return null;
   return weatherCodes[code];
 }

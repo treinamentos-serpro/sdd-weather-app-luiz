@@ -68,14 +68,42 @@ describe('getWeather', () => {
   });
 
   it.each([
-    { daily: {} },
-    { current: {} },
-    { current: null, daily: {} },
-    { current: {}, daily: [] },
+    { daily: fixture().daily },
+    { current: fixture().current },
+    { current: null, daily: fixture().daily },
+    { current: fixture().current, daily: null },
+    { current: fixture().current, daily: [] },
     { current: {}, daily: {} },
   ])('rejeita resposta incompleta %j', async (payload) => {
     respond(payload);
     await expect(getWeather(MOCK_WEATHER.city)).rejects.toBeInstanceOf(WeatherServiceError);
+  });
+
+  it.each([
+    { label: 'nula', value: null, expected: null },
+    { label: 'ausente', value: undefined, expected: null },
+    { label: 'zero', value: 0, expected: 0 },
+  ])('preserva precipitação $label nas condições atuais e na previsão', async ({
+    value,
+    expected,
+  }) => {
+    const payload = fixture();
+    respond({
+      ...payload,
+      current: { ...payload.current, precipitation: value },
+      daily: {
+        ...payload.daily,
+        precipitation_sum: [value, ...payload.daily.precipitation_sum.slice(1)],
+      },
+    });
+
+    const data = await getWeather(MOCK_WEATHER.city);
+
+    expect(data.current.precipitationMm).toBe(expected);
+    expect(data.forecast).toHaveLength(5);
+    expect(data.forecast[0].precipitationSumMm).toBe(expected);
+    expect(data.forecast[1].precipitationSumMm).toBe(4.2);
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it('normaliza campos inválidos e arrays curtos sem remover dias', async () => {
@@ -104,6 +132,98 @@ describe('getWeather', () => {
     });
     expect(data.forecast[1].minimumTemperatureC).toBeNull();
     expect(data.forecast[2].precipitationProbabilityMax).toBe(12.5);
+  });
+
+  it('normaliza campos opcionais ausentes sem produzir undefined', async () => {
+    respond({
+      current: {},
+      daily: { time: ['2026-10-27'] },
+    });
+
+    const data = await getWeather(MOCK_WEATHER.city);
+
+    expect(data.timezone).toBeNull();
+    expect(data.current).toEqual({
+      observedAt: null,
+      weatherCode: null,
+      temperatureC: null,
+      apparentTemperatureC: null,
+      relativeHumidity: null,
+      precipitationMm: null,
+      windSpeedKmh: null,
+      pressureHpa: null,
+    });
+    expect(data.forecast).toHaveLength(5);
+    expect(data.forecast[0]).toEqual({
+      localDate: '2026-10-27',
+      weatherCode: null,
+      minimumTemperatureC: null,
+      maximumTemperatureC: null,
+      precipitationSumMm: null,
+      precipitationProbabilityMax: null,
+      maximumWindSpeedKmh: null,
+    });
+    expect(data.forecast.slice(1).every((day) => Object.values(day).every((value) => value !== undefined))).toBe(
+      true,
+    );
+  });
+
+  it.each([0, -0.1, -1, null, undefined])(
+    'marca pressão %s como indisponível pois deve ser positiva',
+    async (pressure) => {
+      const payload = fixture();
+      respond({ ...payload, current: { ...payload.current, surface_pressure: pressure } });
+      const data = await getWeather(MOCK_WEATHER.city);
+      expect(data.current.pressureHpa).toBeNull();
+    },
+  );
+
+  it.each([null, undefined, '12', {}, true])(
+    'não interpreta temperatura malformada %j como zero nem invalida os demais campos',
+    async (value) => {
+      const payload = fixture();
+      respond({
+        ...payload,
+        current: { ...payload.current, temperature_2m: value },
+        daily: { ...payload.daily, temperature_2m_min: [value, 19.1, 17.6, 18.4, 19.3] },
+      });
+
+      const data = await getWeather(MOCK_WEATHER.city);
+
+      expect(data.current.temperatureC).toBeNull();
+      expect(data.current.apparentTemperatureC).toBe(26.1);
+      expect(data.forecast).toHaveLength(5);
+      expect(data.forecast[0].minimumTemperatureC).toBeNull();
+      expect(data.forecast[0].maximumTemperatureC).toBe(27.5);
+      expect(data.forecast[1].minimumTemperatureC).toBe(19.1);
+    },
+  );
+
+  it.each([undefined, null, '2026-10-27', {}])(
+    'rejeita daily.time incompatível %j mesmo com current válido',
+    async (time) => {
+      const payload = fixture();
+      respond({ ...payload, daily: { ...payload.daily, time } });
+      await expect(getWeather(MOCK_WEATHER.city)).rejects.toBeInstanceOf(WeatherServiceError);
+    },
+  );
+
+  it('mantém cinco datas de calendário consecutivas durante mudança de horário de verão', async () => {
+    const payload = fixture();
+    const dates = ['2026-10-31', '2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04'];
+    respond({
+      ...payload,
+      timezone: 'America/New_York',
+      current: { ...payload.current, time: '2026-10-31T12:00' },
+      daily: { ...payload.daily, time: dates },
+    });
+
+    const data = await getWeather(MOCK_WEATHER.city);
+
+    expect(data.forecast.map((day) => day.localDate)).toEqual(dates);
+    expect(data.forecast.map((day) => day.minimumTemperatureC)).toEqual(
+      payload.daily.temperature_2m_min,
+    );
   });
 
   it('mantém dia sem dados em lacuna do calendário sem deslocar os arrays paralelos', async () => {

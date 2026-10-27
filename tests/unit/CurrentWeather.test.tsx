@@ -52,6 +52,33 @@ describe('CurrentWeather', () => {
     expect(MOCK_WEATHER.current.temperatureC).toBe(25.4);
   });
 
+  it('exibe o horário da fonte em formato local somente com fuso válido', () => {
+    const { rerender } = render(
+      <CurrentWeather
+        city={MOCK_WEATHER.city}
+        current={{ ...MOCK_WEATHER.current, observedAt: '2026-10-27T12:05' }}
+        unit="celsius"
+        timezone="America/Sao_Paulo"
+      />,
+    );
+    expect(screen.getByText('Horário de referência:')).toBeInTheDocument();
+    expect(screen.getByText('27/10/2026 às 12:05')).toHaveAttribute(
+      'dateTime',
+      '2026-10-27T12:05',
+    );
+
+    rerender(
+      <CurrentWeather
+        city={MOCK_WEATHER.city}
+        current={{ ...MOCK_WEATHER.current, observedAt: '2026-10-27T12:05' }}
+        unit="celsius"
+        timezone="invalid"
+      />,
+    );
+    expect(screen.queryByText('Horário de referência:')).not.toBeInTheDocument();
+    expect(screen.queryByRole('time')).not.toBeInTheDocument();
+  });
+
   it('preserva os campos válidos em uma resposta parcial', () => {
     render(
       <CurrentWeather

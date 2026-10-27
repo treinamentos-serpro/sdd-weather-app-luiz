@@ -39,6 +39,8 @@ describe('ForecastList', () => {
     expect(screen.getByText('27,5 °C')).toBeInTheDocument();
     expect(screen.getByText('18,2 °C')).toBeInTheDocument();
     expect(screen.getByText('10 %')).toBeInTheDocument();
+    expect(screen.getByText('0,0 mm')).toBeInTheDocument();
+    expect(screen.getByText('18,4 km/h')).toBeInTheDocument();
     rerender(<ForecastCard day={MOCK_WEATHER.forecast[0]} unit="fahrenheit" />);
     expect(screen.getByText('81,5 °F')).toBeInTheDocument();
     expect(screen.getByText('64,8 °F')).toBeInTheDocument();
@@ -55,6 +57,8 @@ describe('ForecastList', () => {
             maximumTemperatureC: null,
             minimumTemperatureC: null,
             precipitationProbabilityMax: null,
+            precipitationSumMm: null,
+            maximumWindSpeedKmh: null,
           },
         ]}
         unit="celsius"
@@ -62,7 +66,7 @@ describe('ForecastList', () => {
       />,
     );
     const card = screen.getByRole('article', { name: 'ter., 27/10' });
-    expect(within(card).getAllByText('Indisponível')).toHaveLength(4);
+    expect(within(card).getAllByText('Indisponível')).toHaveLength(6);
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 
