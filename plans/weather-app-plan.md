@@ -127,6 +127,7 @@ interface CurrentWeather {
   relativeHumidity: number | null;
   precipitationMm: number | null;
   windSpeedKmh: number | null;
+  pressureHpa: number | null;
 }
 
 interface ForecastDay {
@@ -162,6 +163,13 @@ interface WeatherSnapshot {
   devem estar entre 0 e 100; precipitação e vento não podem ser negativos.
   Temperaturas não recebem limites de domínio que a spec não definiu.
 
+O painel atual recebe `city`, `current` e `unit` em
+`src/components/CurrentWeather.tsx`. Os helpers puros ficam em
+`src/lib/weatherCodes.ts` (rótulos WMO e ícones decorativos) e
+`src/lib/temperature.ts` (conversão e formatação). `pressureHpa` representa
+`surface_pressure`, em hPa, positivo e finito; ausências/valores inválidos viram
+`null`. Não inferir pressão a partir de outras métricas.
+
 Estados da tela devem ser discriminados, evitando combinar flags contraditórias:
 
 ```ts
@@ -189,6 +197,24 @@ ausentes permanece `success` com os campos nulos no snapshot. Falhas e timeout
 nunca são convertidos em lista vazia ou dados parciais.
 
 ## Data Flow
+
+### Etapa de UI sem API
+
+Etapa intermediária concluída: o App agora usa `useWeather` em runtime,
+sem seletor de demonstração nem import do mock. A descrição abaixo registra
+a etapa anterior. Loading bloqueia SearchBar, erro exibe a mensagem do hook e
+chama `retry`, sucesso distribui `data` e a unidade local aos componentes.
+Testes unitários substituem os serviços; E2E interceptam ambas as APIs.
+
+Antes da integração com hooks/services, `App.tsx` compõe os componentes com
+`MOCK_WEATHER`. Um seletor explicitamente identificado como demonstração permite
+inspecionar `idle`, `loading`, `empty`, `error` e `success`. Sem timers ou rede:
+`loading` permanece até selecionar outro cenário. Buscar São Paulo (ignorando
+acentos/caixa) mostra o mock; outras cidades mostram vazio, sem renomear os
+dados. Retry repete a última busca, inicialmente São Paulo. A unidade é estado
+da UI, começa em Celsius e não altera os valores canônicos. `main.tsx` e
+`styles/index.css` inicializam React e Tailwind. Este modo não substitui o
+fluxo definitivo de busca e escolha explícita da cidade.
 
 ```mermaid
 flowchart TD
@@ -249,6 +275,15 @@ global de concorrência.
 
 ## External APIs
 
+As consultas compartilham `fetchWithTimeout` em `weatherService.ts`, com
+`AbortController` de 10 segundos e `clearTimeout` no `finally`. Um callback
+consome o corpo antes de encerrar o timer. `AbortError` lança
+`WeatherServiceError("A requisição demorou demais.")`; falha de rede lança
+`WeatherServiceError("Falha de rede.")`, preservando a causa. Erros HTTP e JSON
+permanecem distintos. Este limite de transporte é um teto independente; a
+integração futura com o hook ainda deve impor 8 segundos por operação e
+propagar cancelamento externo.
+
 ### Geocoding
 
 - **Método e URL:** `GET
@@ -288,15 +323,20 @@ global de concorrência.
 - Lista `results` ausente ou vazia representa busca sem resultados. Resposta
   HTTP de erro, falha de rede ou JSON/estrutura incompatível representa falha
   da operação, não lista vazia.
-- Montar a URL usando `URLSearchParams` para preservar/codificar acentos e
-  demais caracteres.
+- Nesta etapa, `searchCities(name: string): Promise<City[]>` fica em
+  `src/services/weatherService.ts`. Retorna `[]` para entrada trimada vazia,
+  sem rede; a UI continua responsável pela mensagem de validação. Usa
+  `encodeURIComponent` para o parâmetro `name`. HTTP não-OK, erros de rede,
+  API e contrato lançam `WeatherServiceError`; consultas acima de 100 pontos
+  Unicode também são rejeitadas antes da rede. Cancelamento será integrado
+  quando o hook de operações for implementado.
 
 ### Forecast
 
 - **Método e URL:** `GET https://api.open-meteo.com/v1/forecast`
 - **Parâmetros relevantes:**
   - `latitude` e `longitude`: coordenadas exatas da cidade selecionada.
-  - `current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m`
+  - `current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,surface_pressure`
   - `daily=weather_code,temperature_2m_min,temperature_2m_max,precipitation_sum,precipitation_probability_max,wind_speed_10m_max`
   - `timezone=auto`: o provedor determina o fuso pelas coordenadas.
   - `forecast_days=5`: hoje local e os quatro dias locais seguintes.
@@ -305,7 +345,7 @@ global de concorrência.
 - **Exemplo de requisição:**
 
   ```text
-  https://api.open-meteo.com/v1/forecast?latitude=-23.5475&longitude=-46.6361&current=temperature_2m%2Capparent_temperature%2Crelative_humidity_2m%2Cprecipitation%2Cweather_code%2Cwind_speed_10m&daily=weather_code%2Ctemperature_2m_min%2Ctemperature_2m_max%2Cprecipitation_sum%2Cprecipitation_probability_max%2Cwind_speed_10m_max&timezone=auto&forecast_days=5&temperature_unit=celsius&precipitation_unit=mm&wind_speed_unit=kmh
+  https://api.open-meteo.com/v1/forecast?latitude=-23.5475&longitude=-46.6361&current=temperature_2m%2Capparent_temperature%2Crelative_humidity_2m%2Cprecipitation%2Cweather_code%2Cwind_speed_10m%2Csurface_pressure&daily=weather_code%2Ctemperature_2m_min%2Ctemperature_2m_max%2Cprecipitation_sum%2Cprecipitation_probability_max%2Cwind_speed_10m_max&timezone=auto&forecast_days=5&temperature_unit=celsius&precipitation_unit=mm&wind_speed_unit=kmh
   ```
 
 - **Exemplo resumido de resposta:**
@@ -320,7 +360,8 @@ global de concorrência.
       "relative_humidity_2m": 65,
       "precipitation": 0.0,
       "weather_code": 2,
-      "wind_speed_10m": 10.8
+      "wind_speed_10m": 10.8,
+      "surface_pressure": 925.4
     },
     "daily": {
       "time": [
@@ -349,7 +390,8 @@ global de concorrência.
     `weather_code` → `weatherCode`; `temperature_2m` →
     `temperatureC`; `apparent_temperature` → `apparentTemperatureC`;
     `relative_humidity_2m` → `relativeHumidity`; `precipitation` →
-    `precipitationMm`; `wind_speed_10m` → `windSpeedKmh`.
+    `precipitationMm`; `wind_speed_10m` → `windSpeedKmh`;
+    `surface_pressure` → `pressureHpa`.
   - Para `ForecastDay`, percorrer índices dos arrays `daily`: `time[i]` →
     `localDate`; `weather_code[i]` → `weatherCode`;
     `temperature_2m_min[i]`/`temperature_2m_max[i]` →
@@ -372,12 +414,46 @@ global de concorrência.
   individuais é resposta parcial. Sem fuso utilizável, não apresentar datas ou
   timestamps como locais e exibir a mensagem exigida pela spec.
 
+Nesta entrega, `getWeather(city: City): Promise<WeatherData>` exige objetos
+`current` e `daily` e um array `daily.time`. Uma data válida desse array ancora
+os cinco dias consecutivos (compensando seu índice); se vazio/sem datas válidas,
+usa a data local de `current.time`. Sem âncora válida, lança
+`WeatherServiceError`. Lacunas são preservadas com campos nulos e os dados
+continuam associados aos índices das datas recebidas. Não usa o relógio do
+dispositivo para inventar datas. `AbortSignal` será adicionado na integração
+com o hook.
+
 Usar os rótulos WMO mantidos pela aplicação conforme a tabela de RF-03, em vez
 de depender de descrições textuais externas. Não fazer retry automático. A
 atribuição, os limites de uso, os termos e a licença da fonte devem ser
 confirmados antes do lançamento (RNF-06 e riscos da spec).
 
 ## State Management
+
+### Contrato atualizado do hook
+
+Revisão de consistência: estados do hook usam união discriminada, com sucesso
+exigindo dados e erro exigindo mensagem. `validateSearch` em `lib/search.ts`
+centraliza trim/vazio/limite Unicode para formulário, hook e serviço.
+Validação no formulário não inicia operação nem oferece retry; editar o campo
+chama `clearError` do hook, descartando o erro e retry anteriores. O hook expõe
+`canRetry`, falso para validação. O serviço distingue motivos tipados
+`api/network/timeout/cancelled/validation`; cancelamento externo não é timeout.
+Falhas inesperadas do callback de leitura são propagadas, não rotuladas como rede.
+
+`src/hooks/useWeather.ts` expõe `status` (`idle/loading/success/error/empty`),
+`data`, `cities`, `error` (mensagem ou `null`), `query`, `search(name)`,
+`selectCity(city)` e `retry()`. Por solicitação de implementação, `search`
+consulta cidades e carrega automaticamente o clima da primeira; esta decisão
+substitui a seleção obrigatória do fluxo original. A lista permanece disponível
+para escolha posterior. `retry` repete a última ação explícita: uma busca inteira
+ou a consulta da cidade selecionada. Busca vazia/acima de 100 pontos Unicode
+é erro de validação sem rede. Cada ação cancela a anterior, limpa dados antigos
+e tem prazo total de 8s, compartilhado pela busca e forecast. Cancelamento e
+identidade de operação impedem respostas obsoletas e atualizações após unmount.
+Os serviços aceitam `AbortSignal` opcional além do teto de transporte de 10s.
+A unidade continua exclusivamente no estado de UI do App; conectar o hook ao
+App demonstrativo é uma etapa posterior.
 
 O estado da aplicação vive no hook `useWeatherApp`, instanciado por `App.tsx`;
 `App` passa valores e callbacks aos componentes por props. Não usar store

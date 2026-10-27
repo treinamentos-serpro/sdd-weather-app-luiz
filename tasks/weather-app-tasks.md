@@ -158,12 +158,22 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
     inválido e falha de rede rejeitam/retornam erro; sinal abortado chega ao
     `fetch`; nenhuma nova chamada é feita automaticamente.
 - **Dependências:** T-01, T-02.
-- **Arquivos prováveis:** `src/services/geocodingService.ts`
+- **Entrega nesta etapa:** `searchCities(name)` em
+  `src/services/weatherService.ts`, com `encodeURIComponent`, retorno vazio
+  sem rede para input trimado vazio e `WeatherServiceError` para falhas.
+  Integração de `AbortSignal` permanece pendente para a etapa do hook.
+- **Arquivos prováveis:** `src/services/weatherService.ts`
 - **Tipo:** Data
 - **Rastreabilidade:** RF-01, RF-05; AC-01.2, AC-01.4, AC-01.7–AC-01.8,
   AC-05.2.
 
 ### T-16 — Integrar o serviço de previsão
+
+- **Proteção de transporte implementada:** busca e previsão compartilham
+  `fetchWithTimeout`, abortando em 10s inclusive durante a leitura do corpo,
+  convertendo abort/rede em `WeatherServiceError` e limpando timer no `finally`.
+  Testar o limite exato com relógio falso. O prazo de operação de 8s e o
+  cancelamento externo continuam pendentes para a integração com o hook.
 
 - **Descrição:** Consultar Forecast API com coordenadas da cidade e normalizar
   condições atuais e metadados da resposta.
@@ -206,6 +216,17 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 ## Etapa 4 — Hooks e orquestração
 
 ### T-14 — Orquestrar a busca no hook
+
+- **Correções de consistência:** união discriminada de estado; validação
+  compartilhada entre UI/hook/service; limpar erro anterior ao editar e impedir
+  retry de validação; distinguir cancelamento externo/timeout e preservar bugs
+  de callback para diagnóstico. Cobrir com testes de regressão.
+
+- **Revisão implementada:** `src/hooks/useWeather.ts` unifica os estados,
+  mantém query/cities/data/error e carrega automaticamente a primeira cidade
+  após buscar. `selectCity` consulta uma escolha posterior; `retry` repete a
+  última busca completa ou seleção. Testar prazo total de 8s, cancelamento,
+  respostas fora de ordem e unmount. Unidade permanece no App.
 
 - **Descrição:** Implementar estado e fluxo de busca, com validação,
   cancelamento, timeout, retry manual e descarte de resposta obsoleta.
@@ -301,7 +322,7 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
   props, com unidades e dados indisponíveis.
 - **Critérios de aceite:**
   - Para fixture válida, renderiza cidade, condição, temperatura, sensação,
-    umidade, precipitação e vento com valores/unidades fornecidos; `null`
+    umidade, precipitação, vento e pressão superficial em hPa com valores/unidades fornecidos; `null`
     renderiza “Indisponível” no campo correspondente.
   - Timestamp é mostrado como hora local somente com fuso válido; sem fuso não
     é anunciado como horário local.
@@ -311,7 +332,12 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
     indisponíveis.”; loading e erro são associados ao painel e anunciáveis.
   - O componente só recebe props e não inicia requests.
 - **Dependências:** T-01, T-03, T-04, T-26.
-- **Arquivos prováveis:** `src/components/WeatherPanel.tsx`
+- **Arquivos prováveis:** `src/components/CurrentWeather.tsx`,
+  `src/lib/weatherCodes.ts`, `src/lib/temperature.ts`.
+- **Complemento de contrato:** adicionar `pressureHpa: number | null` a
+  `CurrentWeather` e ao mock; o futuro service mapeia `surface_pressure` e
+  rejeita pressão não positiva/não finita. Testar conversão, WMO, métricas e
+  campos indisponíveis em `tests/unit/`.
 - **Tipo:** UI
 - **Rastreabilidade:** RF-02, RF-05, RF-06; AC-02.1–AC-02.4, AC-02.9,
   AC-05.1, AC-06.1, AC-06.3–AC-06.4; RNF-02, RNF-08.
@@ -358,6 +384,16 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-30 — Compor a aplicação
 
+- **Integração atual:** substituir modo mock por `useWeather`, renderizar os
+  cinco estados, ligar SearchBar a `search`, ErrorState a `retry` e distribuir
+  `data`/unidade aos componentes. Unidade permanece no App; testes usam
+  serviços mockados e APIs interceptadas, sem dependência da rede real.
+- **Entrega intermediária de UI:** compor `App.tsx` com o mock e seletor de
+  cenários `idle/loading/empty/error/success`, identificados como demonstração.
+  Busca São Paulo exibe o mock; demais cidades exibem vazio. Retry repete a
+  última busca. Incluir bootstrap React, Tailwind global e testes dos cinco
+  estados e da preservação de unidade. A integração definitiva com API/hook
+  permanece pendente.
 - **Descrição:** Conectar componentes e hook no ponto de entrada da aplicação.
 - **Critérios de aceite:**
   - Com interação de usuário, enviar busca chama o fluxo de busca; selecionar

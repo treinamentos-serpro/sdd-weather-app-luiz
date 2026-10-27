@@ -31,8 +31,11 @@ nas extremidades, a consulta deve conter de 1 a 100 pontos de código Unicode. A
 aplicação deve aceitar acentos e caracteres válidos em nomes de localidades,
 codificando-os corretamente na requisição. Deve apresentar até 10 resultados,
 na ordem recebida do provedor, com nome da cidade e campos regionais disponíveis
-(região/estado e país). A pessoa deve selecionar um resultado; nenhuma cidade
-será escolhida automaticamente. Se resultados não puderem ser distinguidos por
+(região/estado e país). Na revisão do fluxo do hook, a primeira cidade é
+consultada automaticamente após uma busca com resultados; a lista é preservada
+para permitir escolher outra cidade. Esta revisão substitui a seleção explícita
+obrigatória descrita originalmente nos critérios de aceite.
+Se resultados não puderem ser distinguidos por
 nome e campos regionais, apresentar as coordenadas em latitude/longitude WGS 84
 com quatro casas decimais. Resultados idênticos em nome, região, país e
 coordenadas devem ser deduplicados.
@@ -41,14 +44,17 @@ coordenadas devem ser deduplicados.
 
 Após selecionar uma cidade, o sistema deve consultar e apresentar, quando
 disponíveis, condição meteorológica, temperatura, sensação térmica, umidade
-relativa, precipitação e velocidade do vento. Os dados devem corresponder às
+relativa, precipitação, velocidade do vento e pressão atmosférica na superfície.
+Os dados devem corresponder às
 coordenadas da cidade selecionada. “Atual” significa o dado mais recente
 disponibilizado pelo endpoint de condições atuais do Open-Meteo; não deve ser
 descrito como observação em tempo real. Quando fornecido, o horário do dado deve
 ser apresentado na hora local da cidade.
 
 Unidades iniciais: temperatura em °C, precipitação em mm, velocidade do vento
-em km/h e umidade em %. Temperatura, precipitação e velocidade do vento são
+em km/h, umidade em % e pressão em hPa. Pressão é exibida com uma casa decimal
+e deve ser positiva e finita; caso contrário, é indisponível.
+Temperatura, precipitação e velocidade do vento são
 exibidos com uma casa decimal; umidade, como percentual inteiro. Usar vírgula
 decimal e arredondamento half-up (empates para longe de zero). Campos ausentes
 ou fora do domínio válido (umidade fora de 0–100%, valores
