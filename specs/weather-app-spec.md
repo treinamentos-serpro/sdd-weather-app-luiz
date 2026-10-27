@@ -196,9 +196,10 @@ verificar os resultados observáveis na interface.
 4. **Given** uma resposta de geocodificação com resultados, **When** a busca
    termina, **Then** a interface exibe no máximo 10 resultados na ordem recebida,
    incluindo nome e os campos de região/estado e país presentes na resposta.
-5. **Given** resultados com nomes de cidade iguais, **When** a lista é exibida,
-   **Then** cada item mostra os campos regionais disponíveis e nenhum resultado
-   é selecionado automaticamente.
+5. **Given** uma busca com resultados, **When** a lista é exibida e a busca
+   termina, **Then** a primeira cidade é consultada automaticamente e a lista
+   permanece disponível para selecionar outra cidade. Para nomes iguais, cada
+   item mostra os campos regionais disponíveis.
 6. **Given** resultados que continuam indistinguíveis pelos campos regionais,
    **When** a lista é exibida, **Then** cada resultado inclui as coordenadas
    recebidas em WGS 84, arredondadas a quatro casas decimais.

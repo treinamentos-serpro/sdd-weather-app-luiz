@@ -34,14 +34,29 @@ describe('ForecastList', () => {
     ]);
   });
 
+  it('usa o ano da data local inicial da previsão como referência', () => {
+    const forecast = MOCK_WEATHER.forecast.map((day, index) => ({
+      ...day,
+      localDate: `2027-01-0${index + 1}`,
+    }));
+
+    render(<ForecastList forecast={forecast} unit="celsius" timezone="UTC" />);
+
+    expect(screen.getByRole('heading', { name: 'sex., 01/01' })).toBeInTheDocument();
+  });
+
   it('altera máx/mín pela unidade mantendo a probabilidade', () => {
-    const { rerender } = render(<ForecastCard day={MOCK_WEATHER.forecast[0]} unit="celsius" />);
+    const { rerender } = render(
+      <ForecastCard day={MOCK_WEATHER.forecast[0]} unit="celsius" referenceYear={2026} />,
+    );
     expect(screen.getByText('27,5 °C')).toBeInTheDocument();
     expect(screen.getByText('18,2 °C')).toBeInTheDocument();
     expect(screen.getByText('10 %')).toBeInTheDocument();
     expect(screen.getByText('0,0 mm')).toBeInTheDocument();
     expect(screen.getByText('18,4 km/h')).toBeInTheDocument();
-    rerender(<ForecastCard day={MOCK_WEATHER.forecast[0]} unit="fahrenheit" />);
+    rerender(
+      <ForecastCard day={MOCK_WEATHER.forecast[0]} unit="fahrenheit" referenceYear={2026} />,
+    );
     expect(screen.getByText('81,5 °F')).toBeInTheDocument();
     expect(screen.getByText('64,8 °F')).toBeInTheDocument();
     expect(screen.getByText('10 %')).toBeInTheDocument();
@@ -84,7 +99,9 @@ describe('ForecastList', () => {
   });
 
   it('usa ícone decorativo e rótulo textual para a condição', () => {
-    render(<ForecastCard day={MOCK_WEATHER.forecast[0]} unit="celsius" />);
+    render(
+      <ForecastCard day={MOCK_WEATHER.forecast[0]} unit="celsius" referenceYear={2026} />,
+    );
     expect(screen.getByText('Parcialmente nublado')).toBeInTheDocument();
     expect(screen.getByText('⛅')).toHaveAttribute('aria-hidden', 'true');
   });

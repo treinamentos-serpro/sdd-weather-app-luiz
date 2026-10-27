@@ -1,7 +1,4 @@
-export function formatDayLabel(
-  localDate: string,
-  referenceYear = new Date().getUTCFullYear(),
-): string {
+export function formatDayLabel(localDate: string, referenceYear: number): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) return 'Indisponível';
   const date = new Date(`${localDate}T00:00:00Z`);
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== localDate) {

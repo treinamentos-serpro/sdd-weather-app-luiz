@@ -39,8 +39,9 @@ services/ ───────────────────────�
   callbacks do `App`; `lib` não importa outras camadas; `services` não importa
   `components` nem `hooks`.
 
-- A busca só consulta a geocodificação após envio explícito; a pessoa escolhe
-  um resultado antes de consultar o clima (RF-01).
+- A busca só consulta a geocodificação após envio explícito; a primeira cidade
+  encontrada é consultada automaticamente e a lista permanece disponível para
+  selecionar outra cidade (RF-01).
 - A consulta meteorológica usa uma única chamada de previsão com condições
   atuais e dados diários. Isso mantém uma única operação, timeout e recuperação
   para os dados da cidade (RF-02, RF-03, RF-05). A orquestração do timeout fica

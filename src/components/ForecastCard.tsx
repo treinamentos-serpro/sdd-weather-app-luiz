@@ -7,11 +7,12 @@ import type { ForecastDay, Unit } from '../types/weather';
 interface ForecastCardProps {
   day: ForecastDay;
   unit: Unit;
+  referenceYear: number;
 }
 
-export default function ForecastCard({ day, unit }: ForecastCardProps) {
+export default function ForecastCard({ day, unit, referenceYear }: ForecastCardProps) {
   const headingId = useId();
-  const label = formatDayLabel(day.localDate);
+  const label = formatDayLabel(day.localDate, referenceYear);
   const condition = getWeatherCondition(day.weatherCode);
 
   return (

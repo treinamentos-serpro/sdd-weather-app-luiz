@@ -11,6 +11,7 @@ interface ForecastListProps {
 
 export default function ForecastList({ forecast, unit, timezone }: ForecastListProps) {
   const headingId = useId();
+  const referenceYear = Number(forecast[0]?.localDate.slice(0, 4));
 
   return (
     <section aria-labelledby={headingId} className="font-sans text-white">
@@ -25,7 +26,7 @@ export default function ForecastList({ forecast, unit, timezone }: ForecastListP
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {forecast.map((day) => (
             <li key={day.localDate}>
-              <ForecastCard day={day} unit={unit} />
+              <ForecastCard day={day} unit={unit} referenceYear={referenceYear} />
             </li>
           ))}
         </ul>

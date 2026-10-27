@@ -13,9 +13,9 @@ describe('Datas locais', () => {
   it('formata o calendário sem deslocamento de fuso e inclui ano quando necessário', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-27T12:00:00Z'));
-    expect(formatDayLabel('2026-10-27')).toBe('ter., 27/10');
-    expect(formatDayLabel('2027-01-01')).toBe('sex., 01/01/2027');
-    expect(formatDayLabel('2026-01-01')).toBe('qui., 01/01');
+    expect(formatDayLabel('2026-10-27', 2026)).toBe('ter., 27/10');
+    expect(formatDayLabel('2027-01-01', 2026)).toBe('sex., 01/01/2027');
+    expect(formatDayLabel('2026-01-01', 2026)).toBe('qui., 01/01');
     expect(formatDayLabel('2024-02-29', 2024)).toBe('qui., 29/02');
   });
 
@@ -26,7 +26,10 @@ describe('Datas locais', () => {
     '2026-13-01',
     '2026-1-01',
     'invalid',
-  ])('indica data inválida %s', (value) => expect(formatDayLabel(value)).toBe('Indisponível'));
+  ])(
+    'indica data inválida %s',
+    (value) => expect(formatDayLabel(value, 2026)).toBe('Indisponível'),
+  );
 
   it.each([
     'America/Sao_Paulo',
