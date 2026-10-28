@@ -3,6 +3,8 @@ import { formatLocalObservationTime, formatMeasurement } from '../lib/format';
 import { formatTemperature } from '../lib/temperature';
 import { getWeatherCondition } from '../lib/weatherCodes';
 import type { City, CurrentWeather as CurrentWeatherData, Unit } from '../types/weather';
+import ErrorState from './states/ErrorState';
+import LoadingState from './states/LoadingState';
 
 interface CurrentWeatherProps {
   city: City;
@@ -10,6 +12,8 @@ interface CurrentWeatherProps {
   unit: Unit;
   timezone?: string | null;
   headingRef?: Ref<HTMLHeadingElement>;
+  status?: 'loading' | 'error' | 'success';
+  onRetry?: () => void;
 }
 
 export default function CurrentWeather({
@@ -18,6 +22,8 @@ export default function CurrentWeather({
   unit,
   timezone,
   headingRef,
+  status = 'success',
+  onRetry,
 }: CurrentWeatherProps) {
   const headingId = useId();
   const condition = getWeatherCondition(current.weatherCode);
@@ -42,6 +48,20 @@ export default function CurrentWeather({
     apparentTemperature === 'Indisponível' &&
     metrics.every((metric) => metric.value === 'Indisponível');
 
+  if (status !== 'success') {
+    return (
+      <section aria-label={`Condições atuais: ${city.name}`}>
+        {status === 'loading' ? (
+          <LoadingState />
+        ) : onRetry ? (
+          <ErrorState onRetry={onRetry} />
+        ) : (
+          <p role="alert">Não foi possível concluir a operação. Tente novamente.</p>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section
       aria-labelledby={headingId}
@@ -60,9 +80,27 @@ export default function CurrentWeather({
         <p className="mt-1 text-sm text-slate-300">
           {[city.region, city.country].filter(Boolean).join(', ')}
         </p>
+        <p className="mt-2 text-sm text-slate-300">
+          Dados meteorológicos:{' '}
+          <a
+            href="https://open-meteo.com/"
+            className="inline-flex min-h-11 items-center rounded px-1 underline hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"
+          >
+            Open-Meteo
+          </a>
+          {' · '}
+          <a
+            href="https://creativecommons.org/licenses/by/4.0/"
+            className="inline-flex min-h-11 items-center rounded px-1 underline hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"
+          >
+            CC BY 4.0
+          </a>
+          <span className="ml-1">· Conversões e arredondamentos aplicados.</span>
+        </p>
         {observedAt && (
           <p className="mt-1 text-sm text-slate-300">
-            Horário de referência: <time dateTime={current.observedAt ?? undefined}>{observedAt}</time>
+            Horário de referência:{' '}
+            <time dateTime={current.observedAt ?? undefined}>{observedAt}</time>
           </p>
         )}
       </header>

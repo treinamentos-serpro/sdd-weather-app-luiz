@@ -20,6 +20,37 @@ function mockResponse(payload: unknown, status = 200) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('searchCities', () => {
+  it('rejeita AbortSignal pré-abortado sem fetch nem sucesso vazio', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    vi.stubGlobal('fetch', vi.fn());
+    await expect(searchCities('Recife', controller.signal)).rejects.toMatchObject({
+      reason: 'cancelled',
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('cancela fetch em andamento por AbortSignal sem retry', async () => {
+    const controller = new AbortController();
+    let received: AbortSignal | null | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, options: RequestInit) => {
+        received = options.signal;
+        return new Promise<Response>((_resolve, reject) => {
+          received?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
+        });
+      }),
+    );
+    const request = searchCities('Recife', controller.signal);
+    const rejection = expect(request).rejects.toMatchObject({ reason: 'cancelled' });
+    controller.abort();
+    await rejection;
+    expect(received?.aborted).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it.each(['', '  ', '\t\n'])('retorna [] para %j sem rede', async (query) => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

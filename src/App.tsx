@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import interLicenseUrl from '@fontsource/inter/LICENSE?url';
 import CityResults from './components/CityResults';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
@@ -8,13 +9,13 @@ import EmptyState from './components/states/EmptyState';
 import ErrorState from './components/states/ErrorState';
 import LoadingState from './components/states/LoadingState';
 import { useWeather } from './hooks/useWeather';
-import type { Unit } from './types/weather';
 
 export default function App() {
   const mainRef = useRef<HTMLElement>(null);
   const weatherHeadingRef = useRef<HTMLHeadingElement>(null);
-  const [unit, setUnit] = useState<Unit>('celsius');
   const {
+    unit,
+    setUnit,
     status,
     data,
     cities,
@@ -24,6 +25,8 @@ export default function App() {
     retry,
     clearError,
     canRetry,
+    errorReason,
+    selectedCity,
   } = useWeather();
 
   useEffect(() => {
@@ -54,9 +57,15 @@ export default function App() {
           id="main-content"
           tabIndex={-1}
           aria-busy={status === 'loading'}
+          aria-label={
+            selectedCity ? `Consulta meteorológica: ${selectedCity.name}` : 'Consulta meteorológica'
+          }
           className="mt-8 space-y-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent-400"
         >
           {cities.length > 0 && <CityResults cities={cities} onSelect={selectCity} />}
+          {(status === 'loading' || status === 'error') && selectedCity && (
+            <p>Consulta para {selectedCity.name}</p>
+          )}
           {status === 'idle' && (
             <EmptyState title="Consulte o clima" hint="Busque uma cidade para começar." />
           )}
@@ -70,6 +79,7 @@ export default function App() {
                 void retry();
                 mainRef.current?.focus();
               }}
+              timeout={errorReason === 'timeout'}
             />
           )}
           {status === 'success' && data && (
@@ -93,6 +103,35 @@ export default function App() {
           >
             Open-Meteo
           </a>
+          {' · '}
+          <a
+            href="https://creativecommons.org/licenses/by/4.0/"
+            className="underline hover:text-white"
+          >
+            CC BY 4.0
+          </a>
+          <p>Temperaturas convertidas e valores arredondados para exibição.</p>
+          <p>
+            Geocodificação:{' '}
+            <a href="https://www.geonames.org/" className="underline hover:text-white">
+              GeoNames
+            </a>
+            {' · '}
+            <a
+              href={`${import.meta.env.BASE_URL}privacy.html`}
+              className="underline hover:text-white"
+            >
+              Política de privacidade
+            </a>
+          </p>
+          <p>
+            <a
+              href={interLicenseUrl}
+              className="inline-flex min-h-11 items-center rounded px-1 underline hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-400"
+            >
+              Licença da fonte Inter (OFL)
+            </a>
+          </p>
         </footer>
       </div>
     </div>

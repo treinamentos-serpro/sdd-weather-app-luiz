@@ -259,7 +259,9 @@ serem confundidos com erro da operação.
    API (RF-01, AC-01.1–3).
 2. Iniciar busca com timeout de 8 segundos. Enviar o texto trimado e codificado
    como parâmetro de URL. Normalizar, deduplicar resultados idênticos e exibir
-   até 10 na ordem recebida. Nunca selecionar automaticamente.
+   até 10 na ordem recebida. Se houver resultados, a primeira cidade é
+   consultada automaticamente; a lista permanece para escolha posterior,
+   conforme a revisão registrada em RF-01 e nos critérios atuais.
 3. Exibir região/estado e país quando disponíveis. Se resultados ainda forem
    indistinguíveis por nome e campos regionais, exibir latitude e longitude
    recebidas com quatro casas decimais. A lista exibe sempre nome e contexto
@@ -460,8 +462,23 @@ ou a consulta da cidade selecionada. Busca vazia/acima de 100 pontos Unicode
 e tem prazo total de 8s, compartilhado pela busca e forecast. Cancelamento e
 identidade de operação impedem respostas obsoletas e atualizações após unmount.
 Os serviços aceitam `AbortSignal` opcional além do teto de transporte de 10s.
-A unidade continua exclusivamente no estado de UI do App; conectar o hook ao
-App demonstrativo é uma etapa posterior.
+A unidade agora é estado efêmero do próprio `useWeather`, exposto como `unit`
+e `setUnit`. `selectedCity` identifica o alvo também durante loading/erro.
+O App já compõe o hook real; testes de remount e reload confirmam o retorno a
+Celsius sem persistência. A apresentação mantém estados por props em
+`CityResults`, `CurrentWeather` e `ForecastList`, além da composição da página.
+
+### Evidências de hardening
+
+O [registro de validação de release](weather-app-release-validation.md)
+documenta os comandos, ambientes efetivamente exercitados e gates humanos ou
+externos que ainda impedem aprovação de release. O teste de desempenho usa um
+servidor HTTPS local e tráfego real limitado por CDP (não `route.fulfill`, que
+ignoraria o condicionamento de rede). A política de privacidade é um arquivo
+estático distribuído junto ao build, sem adicionar roteamento ou persistência.
+Os créditos CC BY 4.0 e Open-Meteo aparecem junto à condição meteorológica, com
+conversão/arredondamento identificados; os créditos do geocoding aparecem junto
+à lista de resultados.
 
 O estado da aplicação vive no hook `useWeatherApp`, instanciado por `App.tsx`;
 `App` passa valores e callbacks aos componentes por props. Não usar store

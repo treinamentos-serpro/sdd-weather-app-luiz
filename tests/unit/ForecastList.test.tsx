@@ -14,6 +14,24 @@ afterEach(() => {
 });
 
 describe('ForecastList', () => {
+  it('formata fixture de 12 °C e métricas diárias com precisão e unidades exigidas', () => {
+    render(
+      <ForecastList
+        forecast={[
+          {
+            ...MOCK_WEATHER.forecast[0],
+            maximumTemperatureC: 12,
+            minimumTemperatureC: 0,
+          },
+        ]}
+        unit="celsius"
+        timezone="UTC"
+      />,
+    );
+    for (const value of ['12,0 °C', '0,0 °C', '0,0 mm', '10 %', '18,4 km/h']) {
+      expect(screen.getByText(value)).toBeInTheDocument();
+    }
+  });
   it('preserva cinco dias na ordem e usa o grid responsivo solicitado', () => {
     render(
       <ForecastList
@@ -34,7 +52,7 @@ describe('ForecastList', () => {
     ]);
   });
 
-  it('usa o ano da data local inicial da previsão como referência', () => {
+  it('inclui o ano quando a data difere do ano corrente na cidade', () => {
     const forecast = MOCK_WEATHER.forecast.map((day, index) => ({
       ...day,
       localDate: `2027-01-0${index + 1}`,
@@ -42,7 +60,7 @@ describe('ForecastList', () => {
 
     render(<ForecastList forecast={forecast} unit="celsius" timezone="UTC" />);
 
-    expect(screen.getByRole('heading', { name: 'sex., 01/01' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'sex., 01/01/2027' })).toBeInTheDocument();
   });
 
   it('altera máx/mín pela unidade mantendo a probabilidade', () => {
@@ -98,10 +116,25 @@ describe('ForecastList', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Dados meteorológicos indisponíveis.');
   });
 
-  it('usa ícone decorativo e rótulo textual para a condição', () => {
+  it.each(['loading', 'error'] as const)('expõe %s sem mostrar previsão anterior', (status) => {
     render(
-      <ForecastCard day={MOCK_WEATHER.forecast[0]} unit="celsius" referenceYear={2026} />,
+      <ForecastList
+        forecast={MOCK_WEATHER.forecast}
+        unit="celsius"
+        timezone="UTC"
+        status={status}
+      />,
     );
+    expect(screen.getByRole(status === 'loading' ? 'status' : 'alert')).toHaveTextContent(
+      status === 'loading'
+        ? 'Carregando'
+        : 'Não foi possível concluir a operação. Tente novamente.',
+    );
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('usa ícone decorativo e rótulo textual para a condição', () => {
+    render(<ForecastCard day={MOCK_WEATHER.forecast[0]} unit="celsius" referenceYear={2026} />);
     expect(screen.getByText('Parcialmente nublado')).toBeInTheDocument();
     expect(screen.getByText('⛅')).toHaveAttribute('aria-hidden', 'true');
   });

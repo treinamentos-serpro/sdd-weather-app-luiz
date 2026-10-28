@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import CurrentWeather from '../../src/components/CurrentWeather';
 import { getWeatherCondition } from '../../src/lib/weatherCodes';
@@ -8,12 +8,49 @@ import type { CurrentWeather as CurrentWeatherData } from '../../src/types/weath
 afterEach(cleanup);
 
 describe('CurrentWeather', () => {
+  it('apresenta exatamente 12,0 °C para a fixture de 12 °C', () => {
+    render(
+      <CurrentWeather
+        city={MOCK_WEATHER.city}
+        current={{ ...MOCK_WEATHER.current, temperatureC: 12 }}
+        unit="celsius"
+      />,
+    );
+    expect(screen.getByText('12,0 °C')).toBeInTheDocument();
+  });
+  it.each(['loading', 'error'] as const)('anuncia %s sem apresentar dados antigos', (status) => {
+    render(
+      <CurrentWeather
+        city={MOCK_WEATHER.city}
+        current={MOCK_WEATHER.current}
+        unit="celsius"
+        status={status}
+      />,
+    );
+    expect(screen.getByRole('region', { name: 'Condições atuais: São Paulo' })).toBeInTheDocument();
+    expect(screen.getByRole(status === 'loading' ? 'status' : 'alert')).toHaveTextContent(
+      status === 'loading'
+        ? 'Carregando'
+        : 'Não foi possível concluir a operação. Tente novamente.',
+    );
+    expect(screen.queryByText('25,4 °C')).not.toBeInTheDocument();
+  });
   it('apresenta cidade, condição, temperaturas e métricas em pt-BR', () => {
     const { container } = render(
       <CurrentWeather city={MOCK_WEATHER.city} current={MOCK_WEATHER.current} unit="celsius" />,
     );
 
     expect(screen.getByRole('region', { name: 'São Paulo' })).toBeInTheDocument();
+    const region = screen.getByRole('region', { name: 'São Paulo' });
+    expect(region).toHaveTextContent('Conversões e arredondamentos aplicados.');
+    expect(within(region).getByRole('link', { name: 'Open-Meteo' })).toHaveAttribute(
+      'href',
+      'https://open-meteo.com/',
+    );
+    expect(within(region).getByRole('link', { name: 'CC BY 4.0' })).toHaveAttribute(
+      'href',
+      'https://creativecommons.org/licenses/by/4.0/',
+    );
     for (const text of [
       'São Paulo, Brasil',
       '25,4 °C',
@@ -62,10 +99,7 @@ describe('CurrentWeather', () => {
       />,
     );
     expect(screen.getByText('Horário de referência:')).toBeInTheDocument();
-    expect(screen.getByText('27/10/2026 às 12:05')).toHaveAttribute(
-      'dateTime',
-      '2026-10-27T12:05',
-    );
+    expect(screen.getByText('27/10/2026 às 12:05')).toHaveAttribute('dateTime', '2026-10-27T12:05');
 
     rerender(
       <CurrentWeather

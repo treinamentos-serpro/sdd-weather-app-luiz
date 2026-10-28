@@ -1,17 +1,22 @@
 interface ErrorStateProps {
   message?: string;
   onRetry: () => void;
+  timeout?: boolean;
 }
 
 export default function ErrorState({
   message = 'Não foi possível concluir a operação. Tente novamente.',
   onRetry,
+  timeout = false,
 }: ErrorStateProps) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center font-sans text-white shadow-glass backdrop-blur-md">
       <p role="alert" className="text-red-300">
         {message}
       </p>
+      {timeout && (
+        <p className="mt-2 text-sm text-slate-300">Tempo limite de 8 segundos excedido.</p>
+      )}
       <button
         type="button"
         onClick={() => onRetry()}

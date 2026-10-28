@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { MOCK_WEATHER } from '../../src/mocks/weather';
 
 test.beforeEach(async ({ page }) => {
+  await page.route('https://**/*', (route) => route.abort('blockedbyclient'));
   await page.route('https://geocoding-api.open-meteo.com/**', async (route) => {
     const query = new URL(route.request().url()).searchParams.get('name');
     if (query === 'loading') return;
@@ -52,20 +53,41 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('mantém conteúdo sem cortes de 320px a desktop em todos os estados', async ({ page }) => {
-  test.setTimeout(60_000);
-  await page.goto('/');
-  for (const [width, height] of [
-    [320, 900],
-    [375, 900],
-    [640, 900],
-    [768, 900],
-    [844, 390],
-    [1024, 900],
-    [1440, 900],
-  ]) {
-    await page.setViewportSize({ width, height });
-    for (const state of ['idle', 'loading', 'empty', 'error', 'success']) {
+for (const state of ['idle', 'loading', 'empty', 'error', 'success']) {
+  test(`axe WCAG 2.2 AA / ${state}`, async ({ page }) => {
+    await page.goto('/');
+    if (state !== 'idle') {
+      await page.getByRole('searchbox').fill(state);
+      await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+      if (state === 'success')
+        await expect(page.getByRole('region', { name: 'São Paulo' })).toBeVisible();
+      else if (state === 'error') await expect(page.getByRole('alert')).toBeVisible();
+      else
+        await expect(page.getByRole('status')).toContainText(
+          state === 'empty' ? 'Nenhuma cidade' : 'Carregando',
+        );
+    }
+    const result = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+    expect(result.violations).toEqual([]);
+  });
+}
+
+for (const [width, height] of [
+  [320, 900],
+  [375, 900],
+  [640, 900],
+  [768, 900],
+  [844, 390],
+  [1024, 900],
+  [1280, 900],
+  [900, 320],
+  [900, 768],
+]) {
+  for (const state of ['idle', 'loading', 'empty', 'error', 'success']) {
+    test(`sem cortes em ${width}x${height} / ${state}`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
       await page.goto('/');
       if (state !== 'idle') {
         await page.getByRole('searchbox').fill(state);
@@ -75,9 +97,13 @@ test('mantém conteúdo sem cortes de 320px a desktop em todos os estados', asyn
       if (state === 'empty') await expect(page.getByRole('status')).toContainText('Nenhuma cidade');
       if (state === 'error') await expect(page.getByRole('alert')).toBeVisible();
       if (state === 'success') {
+        await page.getByRole('region', { name: 'Resultados da busca' }).getByRole('button').click();
         await expect(page.getByRole('region', { name: 'São Paulo' })).toBeVisible();
-        await page.getByRole('button', { name: '°F' }).focus();
-        await page.keyboard.press('Space');
+        await page.getByRole('button', { name: '°F' }).click();
+        await expect(page.getByRole('button', { name: '°F' })).toHaveAttribute(
+          'aria-pressed',
+          'true',
+        );
         await expect(
           page.getByRole('region', { name: 'Previsão de 5 dias' }).getByRole('listitem'),
         ).toHaveCount(5);
@@ -92,9 +118,14 @@ test('mantém conteúdo sem cortes de 320px a desktop em todos os estados', asyn
             .map((element) => `${element.tagName}: ${element.textContent?.slice(0, 60)}`),
         );
       expect(overflowing, `${width}px / ${state}`).toEqual([]);
-    }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        ),
+      ).toBe(true);
+    });
   }
-});
+}
 
 test('skip link, busca, unidade e retry funcionam por teclado com foco preservado', async ({
   page,
@@ -111,6 +142,11 @@ test('skip link, busca, unidade e retry funcionam por teclado com foco preservad
 
   await page.getByRole('searchbox').focus();
   await page.keyboard.type('Sao Paulo');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('region', { name: 'São Paulo' })).toBeVisible();
+  const result = page.getByRole('region', { name: 'Resultados da busca' }).getByRole('button');
+  await result.focus();
+  await expect(result).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('region', { name: 'São Paulo' })).toBeVisible();
   await page.getByRole('button', { name: '°F' }).focus();
@@ -176,3 +212,4 @@ test('bordas, foco e textos dos controles atingem contraste AA', async ({ page }
     }
   }
 });
+import AxeBuilder from '@axe-core/playwright';

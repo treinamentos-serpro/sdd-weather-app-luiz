@@ -19,6 +19,8 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'mobile', use: { ...devices['iPhone 13'] } },
+    { name: 'firefox', testMatch: 'weather.spec.ts', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', testMatch: 'weather.spec.ts', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
     command: 'pnpm dev',

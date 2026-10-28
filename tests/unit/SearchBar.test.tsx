@@ -6,6 +6,22 @@ import SearchBar from '../../src/components/SearchBar';
 afterEach(cleanup);
 
 describe('SearchBar', () => {
+  it.each([
+    'Digite o nome de uma cidade.',
+    'A busca deve ter até 100 caracteres.',
+    'Não foi possível concluir a operação. Tente novamente.',
+  ])('apresenta erro recebido via props: %s', (errorMessage) => {
+    render(<SearchBar onSearch={vi.fn()} errorMessage={errorMessage} />);
+    expect(screen.getByRole('alert')).toHaveTextContent(errorMessage);
+    expect(screen.getByRole('searchbox')).toHaveAccessibleDescription(errorMessage);
+  });
+
+  it('apresenta loading recebido via props e impede reenvio', () => {
+    render(<SearchBar onSearch={vi.fn()} loading />);
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando');
+    expect(screen.getByRole('searchbox')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Buscar' })).toBeDisabled();
+  });
   it('oferece região de busca e campo com label acessível', () => {
     render(<SearchBar onSearch={vi.fn()} />);
 

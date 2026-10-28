@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { validateSearch } from '../lib/search';
 import { getWeather, searchCities, WeatherServiceError } from '../services/weatherService';
-import type { City, OperationError, WeatherData } from '../types/weather';
+import type { City, OperationError, Unit, WeatherData } from '../types/weather';
 
 type Operation = { type: 'search'; query: string } | { type: 'select'; city: City };
 
@@ -10,6 +10,7 @@ const OPERATION_ERROR_MESSAGE = 'Não foi possível concluir a operação. Tente
 type WeatherHookState = {
   cities: City[];
   query: string;
+  selectedCity: City | null;
 } & (
   | { status: 'idle' | 'loading' | 'empty'; data: null; error: null }
   | { status: 'success'; data: WeatherData; error: null }
@@ -28,12 +29,14 @@ interface ActiveOperation {
 }
 
 export function useWeather() {
+  const [unit, setUnit] = useState<Unit>('celsius');
   const [state, setState] = useState<WeatherHookState>({
     status: 'idle',
     data: null,
     cities: [],
     error: null,
     query: '',
+    selectedCity: null,
   });
   const active = useRef<ActiveOperation | null>(null);
   const lastOperation = useRef<Operation | null>(null);
@@ -69,6 +72,7 @@ export function useWeather() {
           data: null,
           cities: [],
           query: operation.query,
+          selectedCity: null,
           error: validationError,
           errorType: 'validation',
           errorReason: null,
@@ -102,6 +106,7 @@ export function useWeather() {
         error: null,
         query: operation.type === 'search' ? operation.query : previous.query,
         cities: operation.type === 'search' ? [] : previous.cities,
+        selectedCity: operation.type === 'select' ? operation.city : null,
       }));
 
       try {
@@ -109,7 +114,7 @@ export function useWeather() {
         if (operation.type === 'search') {
           const cities = await searchCities(operation.query, controller.signal);
           if (active.current !== current) return;
-          setState((previous) => ({ ...previous, cities }));
+          setState((previous) => ({ ...previous, cities, selectedCity: cities[0] ?? null }));
           if (!cities.length) {
             setState((previous) => ({ ...previous, status: 'empty', data: null, error: null }));
             return;
@@ -157,7 +162,14 @@ export function useWeather() {
   const clearError = useCallback(() => {
     setState((previous) =>
       previous.status === 'error'
-        ? { status: 'idle', data: null, error: null, cities: [], query: previous.query }
+        ? {
+            status: 'idle',
+            data: null,
+            error: null,
+            cities: [],
+            query: previous.query,
+            selectedCity: null,
+          }
         : previous,
     );
     lastOperation.current = null;
@@ -165,11 +177,14 @@ export function useWeather() {
 
   return {
     ...state,
+    unit,
+    setUnit,
     search,
     selectCity,
     retry,
     clearError,
     canRetry: state.status === 'error' && state.errorType === 'operation',
+    errorReason: state.status === 'error' ? state.errorReason : null,
   };
 }
 

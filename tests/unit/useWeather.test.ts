@@ -31,6 +31,61 @@ afterEach(() => {
 });
 
 describe('useWeather', () => {
+  it('associa loading e erro à cidade-alvo sem snapshot anterior', async () => {
+    const pending = deferred<WeatherData>();
+    vi.mocked(getWeather).mockReturnValueOnce(pending.promise);
+    const { result } = renderHook(() => useWeather());
+    let request!: Promise<void>;
+    act(() => {
+      request = result.current.selectCity(MOCK_WEATHER.city);
+    });
+    expect(result.current).toMatchObject({
+      status: 'loading',
+      selectedCity: MOCK_WEATHER.city,
+      data: null,
+    });
+    await act(async () => {
+      pending.reject(new WeatherServiceError('Falha controlada'));
+      await request;
+    });
+    expect(result.current).toMatchObject({
+      status: 'error',
+      selectedCity: MOCK_WEATHER.city,
+      data: null,
+    });
+  });
+  it('mantém unidade sem requests, preserva snapshot canônico e reinicia no remount', async () => {
+    const { result, unmount } = renderHook(() => useWeather());
+    expect(result.current.unit).toBe('celsius');
+    const pending = deferred<WeatherData>();
+    vi.mocked(getWeather).mockReturnValueOnce(pending.promise);
+    let request!: Promise<void>;
+    act(() => {
+      request = result.current.selectCity(MOCK_WEATHER.city);
+    });
+    act(() => result.current.setUnit('fahrenheit'));
+    expect(getWeather).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      pending.resolve(MOCK_WEATHER);
+      await request;
+    });
+    expect(result.current.unit).toBe('fahrenheit');
+    expect(result.current.data).toBe(MOCK_WEATHER);
+    act(() => result.current.setUnit('celsius'));
+    act(() => result.current.setUnit('fahrenheit'));
+    expect(getWeather).toHaveBeenCalledTimes(1);
+    const other = { ...MOCK_WEATHER.city, id: 'other', name: 'Recife' };
+    vi.mocked(getWeather).mockResolvedValueOnce({ ...MOCK_WEATHER, city: other });
+    await act(() => result.current.selectCity(other));
+    expect(result.current.unit).toBe('fahrenheit');
+    expect(result.current.data).toEqual({ ...MOCK_WEATHER, city: other });
+    expect(getWeather).toHaveBeenCalledTimes(2);
+    expect(searchCities).not.toHaveBeenCalled();
+    unmount();
+    const remount = renderHook(() => useWeather());
+    expect(remount.result.current).toMatchObject({ unit: 'celsius', data: null, cities: [] });
+    expect(getWeather).toHaveBeenCalledTimes(2);
+  });
   it('não oferece nem executa retry para validação inválida', async () => {
     const { result } = renderHook(() => useWeather());
     await act(() => result.current.search(''));

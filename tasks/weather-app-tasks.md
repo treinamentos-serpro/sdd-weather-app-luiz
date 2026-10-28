@@ -7,6 +7,16 @@ hooks → componentes → integração → testes → hardening**. Dependências
 pré-requisitos reais; tarefas sem relação de pré-requisito permanecem
 independentes, mesmo quando aparecem em ordem de apresentação.
 
+**Status:** Concluída = critérios atendidos e verificados; Parcial = há
+implementação, mas faltam critérios ou verificação; Pendente = sem evidência de
+implementação/verificação.
+
+Evidências e gates de release: [registro de validação de 27/10/2026](../plans/weather-app-release-validation.md).
+Os arquivos “prováveis” são sugestões; a implementação efetiva usa
+`useWeather`, `SearchBar`, `UnitToggle` e testes em `tests/unit/`.
+Registros de entregas intermediárias abaixo são históricos, não substituem o
+status e os critérios atuais.
+
 ## Prioridade e tamanho relativo
 
 **Prioridade:** P0 = caminho mínimo para uma primeira versão utilizável
@@ -77,6 +87,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-01 — Definir os contratos de domínio
 
+- **Status:** Concluída.
+
 - **Descrição:** Declarar os modelos meteorológicos, unidade e estados de busca
   e clima compartilhados.
 - **Critérios de aceite:**
@@ -94,6 +106,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 ## Etapa 2 — Funções puras
 
 ### T-02 — Validar consultas e normalizar cidades
+
+- **Status:** Concluída.
 
 - **Descrição:** Implementar validação do texto de busca e regras puras de
   deduplicação e identificação de homônimos.
@@ -113,6 +127,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-03 — Criar rótulos WMO e regras de datas
 
+- **Status:** Concluída.
+
 - **Descrição:** Implementar funções puras para rótulos de condição e
   tratamento das datas locais da previsão.
 - **Critérios de aceite:**
@@ -127,6 +143,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
   AC-03.10.
 
 ### T-04 — Converter e formatar temperaturas
+
+- **Status:** Concluída.
 
 - **Descrição:** Implementar conversão de Celsius para Fahrenheit e formatação
   de temperatura para apresentação.
@@ -144,6 +162,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 ## Etapa 3 — Services
 
 ### T-08 — Integrar o serviço de geocodificação
+
+- **Status:** Concluída.
 
 - **Descrição:** Consultar o Open-Meteo Geocoding e mapear respostas para o
   modelo `City`.
@@ -168,6 +188,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
   AC-05.2.
 
 ### T-16 — Integrar o serviço de previsão
+
+- **Status:** Concluída.
 
 - **Proteção de transporte implementada:** busca e previsão compartilham
   `fetchWithTimeout`, abortando em 10s inclusive durante a leitura do corpo,
@@ -195,6 +217,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-17 — Integrar os dados de previsão diária
 
+- **Status:** Concluída.
+
 - **Descrição:** Normalizar os arrays diários da resposta e compor o período
   local de cinco dias.
 - **Critérios de aceite:**
@@ -217,6 +241,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-14 — Orquestrar a busca no hook
 
+- **Status:** Concluída.
+
 - **Correções de consistência:** união discriminada de estado; validação
   compartilhada entre UI/hook/service; limpar erro anterior ao editar e impedir
   retry de validação; distinguir cancelamento externo/timeout e preservar bugs
@@ -226,7 +252,7 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
   mantém query/cities/data/error e carrega automaticamente a primeira cidade
   após buscar. `selectCity` consulta uma escolha posterior; `retry` repete a
   última busca completa ou seleção. Testar prazo total de 8s, cancelamento,
-  respostas fora de ordem e unmount. Unidade permanece no App.
+  respostas fora de ordem e unmount. Unidade agora vive no hook (T-27).
 
 - **Descrição:** Implementar estado e fluxo de busca, com validação,
   cancelamento, timeout, retry manual e descarte de resposta obsoleta.
@@ -248,6 +274,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-26 — Orquestrar a seleção e consulta meteorológica
 
+- **Status:** Concluída.
+
 - **Descrição:** Implementar no hook seleção de cidade, consulta de clima,
   cancelamento, timeout, retry e prevenção de respostas obsoletas.
 - **Critérios de aceite:**
@@ -267,6 +295,9 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-27 — Manter a unidade escolhida na página
 
+- **Status:** Concluída — `useWeather` expõe `unit`/`setUnit`, preserva a escolha
+  entre operações sem novos requests e reinicia em Celsius no remount.
+
 - **Descrição:** Integrar o estado efêmero de unidade ao hook para aplicação
   uniforme aos dados meteorológicos renderizados.
 - **Critérios de aceite:**
@@ -285,6 +316,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-10 — Criar o campo de busca
 
+- **Status:** Concluída.
+
 - **Descrição:** Implementar o componente de entrada e envio explícito da
   busca como UI de apresentação.
 - **Critérios de aceite:**
@@ -300,6 +333,9 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-01, RF-05; AC-01.1–AC-01.3, AC-05.1; RNF-02.
 
 ### T-11 — Criar a lista de resultados da busca
+
+- **Status:** Concluída — `CityResults` recebe estado e retry por props, com
+  testes dedicados de loading/erro/vazio, contexto e seleção por teclado.
 
 - **Descrição:** Implementar apresentação e seleção manual dos resultados de
   geocodificação.
@@ -317,6 +353,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-01; AC-01.4–AC-01.7, AC-01.9; RNF-02.
 
 ### T-20 — Criar o painel de condições atuais
+
+- **Status:** Concluída.
 
 - **Descrição:** Apresentar localidade e condições meteorológicas atuais por
   props, com unidades e dados indisponíveis.
@@ -344,6 +382,9 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-21 — Criar a lista de previsão diária
 
+- **Status:** Concluída — `ForecastList` recebe loading/erro por props, oculta
+  dados anteriores e usa o ano corrente no fuso da cidade; testes com relógio fixo.
+
 - **Descrição:** Apresentar os cinco dias locais e seus campos meteorológicos
   por props.
 - **Critérios de aceite:**
@@ -366,6 +407,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-24 — Criar o seletor de unidade
 
+- **Status:** Concluída.
+
 - **Descrição:** Implementar o controle acessível para selecionar Celsius ou
   Fahrenheit.
 - **Critérios de aceite:**
@@ -384,9 +427,11 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-30 — Compor a aplicação
 
+- **Status:** Concluída.
+
 - **Integração atual:** substituir modo mock por `useWeather`, renderizar os
   cinco estados, ligar SearchBar a `search`, ErrorState a `retry` e distribuir
-  `data`/unidade aos componentes. Unidade permanece no App; testes usam
+  `data`/unidade aos componentes. Unidade agora vem do hook; testes usam
   serviços mockados e APIs interceptadas, sem dependência da rede real.
 - **Entrega intermediária de UI:** compor `App.tsx` com o mock e seletor de
   cenários `idle/loading/empty/error/success`, identificados como demonstração.
@@ -415,6 +460,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-05 — Testar validação e normalização de cidades
 
+- **Status:** Concluída.
+
 - **Descrição:** Testar limites da consulta, deduplicação, ordem e distinção
   de homônimos.
 - **Critérios de aceite:**
@@ -429,6 +476,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-01; AC-01.1–AC-01.7.
 
 ### T-06 — Testar rótulos WMO e datas locais
+
+- **Status:** Concluída.
 
 - **Descrição:** Testar códigos de condição conhecidos/desconhecidos e datas
   de calendário locais.
@@ -447,6 +496,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-07 — Testar conversão e formatação de temperaturas
 
+- **Status:** Concluída.
+
 - **Descrição:** Testar unitariamente conversão de unidade e formatação da
   temperatura.
 - **Critérios de aceite:**
@@ -461,6 +512,9 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-04; AC-04.2–AC-04.5.
 
 ### T-09 — Testar o serviço de geocodificação
+
+- **Status:** Concluída — testes explícitos de sinal pré-abortado e abort
+  durante fetch confirmam rejeição `cancelled`, sem lista vazia nem retry.
 
 - **Descrição:** Testar requisição, mapeamento e falhas do serviço com mock de
   `fetch`.
@@ -479,6 +533,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-12 — Testar o campo de busca
 
+- **Status:** Concluída.
+
 - **Descrição:** Testar interação, acessibilidade e estados de apresentação do
   campo.
 - **Critérios de aceite:**
@@ -496,6 +552,9 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-13 — Testar a lista de resultados
 
+- **Status:** Concluída — testes dedicados de contexto, coordenadas apenas
+  para homônimos indistinguíveis, Enter/Espaço e estados por props.
+
 - **Descrição:** Testar apresentação, distinção e seleção manual das cidades.
 - **Critérios de aceite:**
   - Testes comparam texto de nome/região/país; dois homônimos indistinguíveis
@@ -512,6 +571,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-01; AC-01.4–AC-01.7, AC-01.9; RNF-02.
 
 ### T-15 — Testar o fluxo de busca no hook
+
+- **Status:** Concluída.
 
 - **Descrição:** Testar estados, validação, retry, timeout e concorrência da
   busca.
@@ -531,6 +592,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
   AC-05.1–AC-05.4.
 
 ### T-18 — Testar o mapeamento das condições atuais
+
+- **Status:** Concluída.
 
 - **Descrição:** Testar parâmetros e normalização dos campos meteorológicos
   atuais do serviço.
@@ -553,6 +616,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-19 — Testar o mapeamento da previsão diária
 
+- **Status:** Concluída.
+
 - **Descrição:** Testar arrays diários, período de cinco dias, datas e
   indisponibilidade por campo.
 - **Critérios de aceite:**
@@ -573,6 +638,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-22 — Testar o painel de condições atuais
 
+- **Status:** Concluída.
+
 - **Descrição:** Testar apresentação, campos ausentes, horário e mensagens
   das condições atuais.
 - **Critérios de aceite:**
@@ -592,6 +659,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
   AC-05.1, AC-06.1, AC-06.3–AC-06.4; RNF-02, RNF-08.
 
 ### T-23 — Testar a lista de previsão diária
+
+- **Status:** Concluída.
 
 - **Descrição:** Testar apresentação dos cinco dias, campos parciais e fuso
   na previsão.
@@ -615,6 +684,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-25 — Testar o seletor de unidade
 
+- **Status:** Concluída.
+
 - **Descrição:** Testar estados e operação acessível do controle de unidade.
 - **Critérios de aceite:**
   - Testes encontram o controle por role e nome acessível e confirmam °C
@@ -627,6 +698,8 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-04; AC-04.1, AC-04.6–AC-04.7; RNF-02.
 
 ### T-28 — Testar o fluxo meteorológico no hook
+
+- **Status:** Concluída.
 
 - **Descrição:** Testar seleção, estados, retry, timeout, cancelamento e
   concorrência da consulta de clima.
@@ -645,6 +718,9 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-29 — Testar a unidade no hook
 
+- **Status:** Concluída — teste do hook cobre montagem, snapshot pendente,
+  alternância sem requests, troca de cidade e remount; reload real no E2E.
+
 - **Descrição:** Testar persistência da unidade somente durante a vida da
   página e sua independência das consultas.
 - **Critérios de aceite:**
@@ -658,6 +734,10 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-04; AC-04.1–AC-04.8.
 
 ### T-31 — Testar o percurso principal ponta a ponta
+
+- **Status:** Concluída — busca, seleção explícita posterior, coordenadas,
+  campos atuais/diários, conversão e invariância não térmica cobertos em
+  320/1280 px, sem requests públicos e sem overflow horizontal.
 
 - **Descrição:** Validar o fluxo integrado principal com APIs interceptadas
   em desktop e viewport mobile.
@@ -681,6 +761,10 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
   AC-02.1–AC-02.2, AC-03.1–AC-03.2, AC-03.6–AC-03.7, AC-04.1–AC-04.6.
 
 ### T-32 — Testar falhas e casos parciais ponta a ponta
+
+- **Status:** Concluída — timeout/cancelamento em 8 s, ausência de repetição
+  automática, retry, falhas HTTP/API/rede, campos parciais e seleção fora de
+  ordem têm E2E determinísticos com APIs interceptadas.
 
 - **Descrição:** Validar estados de erro, recuperação e respostas parciais em
   fluxos integrados.
@@ -707,6 +791,10 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-33 — Validar responsividade ponta a ponta
 
+- **Status:** Concluída — matriz de viewports/estados em testes independentes,
+  incluindo 320/768/1280 px e retrato/paisagem emulados. A execução completa
+  passou após corrigir a estrutura agregada do teste e validar requests.
+
 - **Descrição:** Verificar disponibilidade dos controles e ausência de
   rolagem horizontal nos viewports especificados.
 - **Critérios de aceite:**
@@ -724,6 +812,10 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RF-01–RF-06; RNF-01.
 
 ### T-34 — Automatizar verificações de acessibilidade
+
+- **Status:** Parcial — axe adicionado para cinco estados e testes de teclado
+  ampliados; revisão humana por teclado/leitor de tela e inspeção complementar
+  de contraste não executadas. Gates e responsáveis requeridos no registro.
 
 - **Descrição:** Adicionar verificação automatizada de acessibilidade para os
   fluxos e estados principais.
@@ -749,6 +841,12 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-35 — Medir desempenho das operações
 
+- **Status:** Concluída — 100 buscas e 100 seleções com cache desabilitado,
+  HTTPS local/API 1 s e rede CDP 100 ms/10 Mbps. P95: busca 1.463,9 ms e
+  seleção 1.438,6 ms antes da atualização de atribuição; reexecução final em
+  28/10: 1.347,3 ms e 1.330,4 ms (ambos ≤ 5 s). Timeout de 8 s validado separadamente.
+  Protocolo, comando e evidência no registro de validação.
+
 - **Descrição:** Preparar medição controlada do p95 de busca e consulta
   meteorológica.
 - **Critérios de aceite:**
@@ -766,6 +864,10 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-36 — Registrar compatibilidade de navegadores
 
+- **Status:** Parcial — versões reais dos engines Chromium/Firefox/WebKit e
+  OS registradas; matriz das duas versões estáveis de cada navegador e
+  dispositivos reais continua pendente. Emulação não foi declarada como Safari iOS.
+
 - **Descrição:** Documentar os ambientes de navegador verificados em cada
   release.
 - **Critérios de aceite:**
@@ -781,6 +883,10 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RNF-04.
 
 ### T-37 — Confirmar termos e atribuição do provedor
+
+- **Status:** Parcial — URLs consultadas em 28/10/2026, licença/limites
+  registrados e atribuição ampliada. Aprovação de enquadramento, volume,
+  obrigações da distribuição e nomeação de responsáveis ainda pendentes.
 
 - **Descrição:** Registrar a verificação de atribuição, licença, termos e
   limites de uso do Open-Meteo como gate de lançamento.
@@ -798,6 +904,11 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 
 ### T-38 — Documentar a comunicação com o provedor
 
+- **Status:** Parcial — política versionada e servida junto ao build, com link
+  no footer e junto à localidade/condições, com teste de navegação. Sem
+  deploy/URL pública ou aprovação de privacidade/hospedagem nesta sessão;
+  publicação permanece gate de release.
+
 - **Descrição:** Atualizar a política de privacidade para descrever a
   comunicação necessária com o Open-Meteo.
 - **Critérios de aceite:**
@@ -812,6 +923,10 @@ ampliar o escopo; os números referem-se às tarefas do backlog.
 - **Rastreabilidade:** RNF-07.
 
 ### T-39 — Evitar coleta e persistência não previstas
+
+- **Status:** Concluída — inspeção de requests e E2E verificam parâmetros
+  permitidos, ausência de geolocalização/storage/cookies e reset por reload.
+  Fontes Inter agora são locais, sem conexão automática ao Google.
 
 - **Descrição:** Verificar no estado/composição da aplicação que a consulta
   usa apenas os dados necessários e não persiste informações entre sessões.

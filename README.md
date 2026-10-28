@@ -167,8 +167,33 @@ faz nada. Os métodos retornam promises e expõem as falhas no estado `error`.
 
 Cada operação tem prazo total de 8s, cancela a anterior e descarta respostas
 atrasadas, inclusive após unmount. Os serviços agora aceitam `AbortSignal`
-opcional; seu limite interno de 10s continua ativo. O hook não mantém unidade
-nem acessa storage. O App mantém a unidade e distribui os dados aos componentes.
+opcional; seu limite interno de 10s continua ativo. O hook mantém `unit` e
+`setUnit` apenas em memória, reinicia em Celsius a cada montagem e expõe
+`selectedCity` também durante loading/erro. Não acessa storage. O App distribui
+unidade e dados aos componentes.
+
+### Validação de release
+
+Os resultados e gates ainda abertos estão no
+[registro de validação](plans/weather-app-release-validation.md). A política de
+privacidade versionada está em [public/privacy.html](public/privacy.html), servida
+como `privacy.html` junto ao app; publicação externa e aprovação operacional
+continuam sendo gates de release.
+Inter é servida localmente; sua licença OFL também é incluída no build e
+acessível no footer, sem requisição automática ao Google Fonts.
+
+```bash
+pnpm test --maxWorkers=1
+pnpm test:e2e --workers=1
+pnpm build
+pnpm exec playwright test --config playwright.performance.config.ts --workers=1
+```
+
+O último comando requer Chromium e `openssl`. Mede 100 buscas e 100 seleções
+contra um servidor HTTPS local com latência de 1 s, cache desabilitado e rede
+Chromium limitada a RTT de 100 ms / 10 Mbps. Não consulta o provedor público.
+Anexa amostras e p95 em JSON ao resultado Playwright. Firefox/WebKit do runner
+não substituem Chrome/Edge/Safari estáveis nem dispositivos reais.
 
 ### Campo de busca
 
